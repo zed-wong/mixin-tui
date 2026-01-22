@@ -218,7 +218,8 @@ const ResultScreen: React.FC<{
   onCopy?: () => void;
   copyHint?: string;
   inputEnabled: boolean;
-}> = ({ title, data, onBack, onCopy, copyHint, inputEnabled }) => {
+  maxItems?: number;
+}> = ({ title, data, onBack, onCopy, copyHint, inputEnabled, maxItems }) => {
   useInput((input, key) => {
     if (!inputEnabled) return;
     if (key.escape || key.return || key.backspace) {
@@ -232,7 +233,12 @@ const ResultScreen: React.FC<{
 
   return (
     <Box flexDirection="column">
-      <FormattedView title={title} data={data} />
+      <FormattedView
+        title={title}
+        data={data}
+        inputEnabled={inputEnabled}
+        maxItems={maxItems}
+      />
       {copyHint ? (
         <Box paddingX={1} marginTop={1}>
           <Text color={THEME.muted}>{copyHint}</Text>
@@ -1526,6 +1532,7 @@ export const App: React.FC = () => {
         );
       case "result":
         const copyText = currentRoute.copyText;
+        const resultMaxItems = Math.max(3, dimensions.rows - 10);
         return (
           <ResultScreen
             title={currentRoute.title}
@@ -1554,6 +1561,7 @@ export const App: React.FC = () => {
             }
             copyHint={copyText ? "Press C to copy auth token" : undefined}
             inputEnabled={inputEnabled}
+            maxItems={resultMaxItems}
           />
         );
     }
