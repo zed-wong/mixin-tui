@@ -717,7 +717,8 @@ const NetworkAssetsScreen: React.FC<{
   nav: Nav;
   setStatus: (state: StatusState, message: string) => void;
   inputEnabled: boolean;
-}> = ({ services, nav, setStatus, inputEnabled }) => {
+  maxItems?: number;
+}> = ({ services, nav, setStatus, inputEnabled, maxItems }) => {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [raw, setRaw] = useState<AssetResponse[]>([]);
@@ -778,6 +779,7 @@ const NetworkAssetsScreen: React.FC<{
       items={items}
       selectedIndex={selectedIndex}
       emptyMessage="No assets"
+      maxItems={maxItems}
     />
   );
 };
@@ -1306,15 +1308,18 @@ export const App: React.FC = () => {
           />
         );
       }
-      case "network-top-assets":
+      case "network-top-assets": {
+        const listMaxItems = Math.max(3, Math.floor((dimensions.rows - 16) / 2));
         return (
           <NetworkAssetsScreen
             services={services}
             nav={nav}
             setStatus={setStatusMessage}
             inputEnabled={inputEnabled}
+            maxItems={listMaxItems}
           />
         );
+      }
       case "safe-menu": {
         const items: MenuItem[] = [
           { label: "Safe Assets", value: "assets" },
