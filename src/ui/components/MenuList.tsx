@@ -43,7 +43,7 @@ export const MenuList: React.FC<MenuListProps> = ({
     <Box flexDirection="column" paddingX={1}>
       <Box marginBottom={1} borderStyle="round" borderColor={THEME.border} paddingX={1}>
         <Text bold color={THEME.primary}>
-          {title.toUpperCase()}
+          {title.charAt(0).toUpperCase() + title.slice(1)}
         </Text>
       </Box>
       {items.length === 0 ? (

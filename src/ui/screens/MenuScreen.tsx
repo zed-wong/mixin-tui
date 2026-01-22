@@ -22,7 +22,7 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
-    setCommandHints("ARROWS = SELECT, ENTER = CHOOSE" + (onBack ? ", ESC = BACK" : ""));
+    setCommandHints("ARROWS = SELECT, ENTER = CHOOSE" + (onBack ? ", ESC = EXIT" : ""));
   }, [setCommandHints, onBack]);
 
   useEffect(() => {

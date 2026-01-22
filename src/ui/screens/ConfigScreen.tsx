@@ -172,7 +172,7 @@ export const ConfigSwitchScreen: React.FC<{
 
   return (
     <MenuScreen
-      title="Manage Bots"
+      title="Manage Bots (stored in ~/.mixin-tui/configs/)"
       items={items}
       inputEnabled={inputEnabled}
       setCommandHints={setCommandHints}

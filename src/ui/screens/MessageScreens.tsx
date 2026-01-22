@@ -195,8 +195,8 @@ export const MessagesStreamScreen: React.FC<{
 
   useEffect(() => {
     const hint = selectedSender
-      ? `ENTER/R = REPLY TO ${selectedSender}`
-      : "UP/DOWN = SELECT, ESC = STOP";
+      ? `ENTER/R = REPLY TO ${selectedSender}, ESC = EXIT`
+      : "UP/DOWN = SELECT, ESC = EXIT";
     setCommandHints(hint.toUpperCase());
   }, [selectedSender, setCommandHints]);
 

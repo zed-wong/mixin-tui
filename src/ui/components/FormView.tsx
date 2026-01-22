@@ -71,7 +71,7 @@ export const FormView: React.FC<FormViewProps> = ({
 
   useEffect(() => {
     if (setCommandHints) {
-      setCommandHints(helpText || "ENTER = NEXT/SUBMIT, ESC = CANCEL");
+      setCommandHints(helpText || "ENTER = NEXT/SUBMIT, ESC = EXIT");
     }
   }, [setCommandHints, helpText]);
 

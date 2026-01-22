@@ -26,7 +26,7 @@ export const ResultScreen: React.FC<{
 }) => {
   useEffect(() => {
     const hints = [
-      "ESC/ENTER = BACK",
+      "ESC/ENTER = EXIT",
       onCopy ? "C = COPY" : null,
       onRefund ? "R = REFUND" : null,
     ]

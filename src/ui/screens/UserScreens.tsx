@@ -16,7 +16,7 @@ export const UserProfileScreen: React.FC<{
   const [data, setData] = useState<unknown | null>(null);
 
   useEffect(() => {
-    setCommandHints("ESC/ENTER = BACK");
+    setCommandHints("ESC/ENTER = EXIT");
   }, [setCommandHints]);
 
   useEffect(() => {
