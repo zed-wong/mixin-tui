@@ -4,6 +4,7 @@ import { FormView } from "../components/FormView.js";
 import { MenuScreen } from "./MenuScreen.js";
 import {
   listStoredConfigs,
+  removeStoredConfig,
   saveStoredConfigFromJson,
 } from "../../mixin/configStore.js";
 import { THEME } from "../theme.js";
@@ -22,8 +23,14 @@ export const ConfigSwitchScreen: React.FC<{
   setStatus: (state: StatusState, message: string) => void;
 }> = ({ onSelect, onCancel, inputEnabled, setCommandHints, setStatus }) => {
   const [configs, setConfigs] = useState<Array<{ label: string; path: string }>>([]);
+  const [selectedConfig, setSelectedConfig] = useState<{
+    label: string;
+    path: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<"list" | "add">("list");
+  const [mode, setMode] = useState<"list" | "add" | "options" | "confirm_remove">(
+    "list"
+  );
 
   const refreshConfigs = useCallback(async () => {
     try {
@@ -46,6 +53,70 @@ export const ConfigSwitchScreen: React.FC<{
     return <Text color={THEME.muted}>Loading...</Text>;
   }
 
+  if (mode === "options" && selectedConfig) {
+    return (
+      <MenuScreen
+        title={`Manage ${selectedConfig.label}`}
+        items={[
+          { label: "Switch to this bot", value: "switch" },
+          { label: "Remove", value: "remove" },
+          { label: "Back", value: "back" },
+        ]}
+        inputEnabled={inputEnabled}
+        setCommandHints={setCommandHints}
+        onBack={() => {
+          setMode("list");
+          setSelectedConfig(null);
+        }}
+        onSelect={(item) => {
+          if (item.value === "switch") {
+            onSelect(selectedConfig);
+          } else if (item.value === "remove") {
+            setMode("confirm_remove");
+          } else {
+            setMode("list");
+            setSelectedConfig(null);
+          }
+        }}
+      />
+    );
+  }
+
+  if (mode === "confirm_remove" && selectedConfig) {
+    return (
+      <MenuScreen
+        title={`Delete ${selectedConfig.label}?`}
+        items={[
+          { label: "No, keep it", value: "no" },
+          { label: "Yes, delete permanently", value: "yes" },
+        ]}
+        inputEnabled={inputEnabled}
+        setCommandHints={setCommandHints}
+        onBack={() => setMode("options")}
+        onSelect={async (item) => {
+          if (item.value === "yes") {
+            try {
+              setStatus("loading", "Removing config...");
+              await removeStoredConfig(selectedConfig.label);
+              await refreshConfigs();
+              setMode("list");
+              setSelectedConfig(null);
+              setStatus("idle", "Ready");
+            } catch (error) {
+              setStatus(
+                "error",
+                error instanceof Error ? error.message : String(error)
+              );
+              setMode("options");
+            }
+          } else {
+            setMode("options");
+          }
+        }}
+      />
+    );
+  }
+
   if (mode === "add") {
     return (
       <FormView
@@ -54,7 +125,7 @@ export const ConfigSwitchScreen: React.FC<{
           {
             key: "botId",
             label: "Bot ID",
-            placeholder: "e.g. my-bot",
+            placeholder: "e.g. 7000100001",
           },
           {
             key: "keystoreJson",
@@ -117,7 +188,8 @@ export const ConfigSwitchScreen: React.FC<{
         }
         const selected = configs.find((config) => config.label === item.value);
         if (selected) {
-          onSelect({ path: selected.path, label: selected.label });
+          setSelectedConfig(selected);
+          setMode("options");
         }
       }}
     />

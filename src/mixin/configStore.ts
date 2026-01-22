@@ -1,4 +1,4 @@
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { loadConfig, parseConfig } from "./config.js";
@@ -81,5 +81,16 @@ export const saveStoredConfigFromJson = async (options: {
   await ensureConfigDir();
   const targetPath = path.join(CONFIG_DIR, `${safeLabel}.json`);
   await writeFile(targetPath, JSON.stringify(config, null, 2), "utf-8");
+  return { label: safeLabel, path: targetPath };
+};
+
+export const removeStoredConfig = async (label: string) => {
+  const safeLabel = sanitizeLabel(label);
+  if (!safeLabel) {
+    throw new Error("Bot ID is required.");
+  }
+  await ensureConfigDir();
+  const targetPath = path.join(CONFIG_DIR, `${safeLabel}.json`);
+  await unlink(targetPath);
   return { label: safeLabel, path: targetPath };
 };
