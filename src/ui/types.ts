@@ -20,6 +20,7 @@ export type Route =
   | { id: "user-fetch" }
   | { id: "network-menu" }
   | { id: "network-top-assets" }
+  | { id: "network-asset-search" }
   | { id: "network-asset-fetch" }
   | { id: "safe-menu" }
   | { id: "safe-assets" }

@@ -8,9 +8,13 @@
 
 ## Structure
 - `src/index.tsx`: Ink entry point, renders `App`.
-- `src/ui/App.tsx`: TUI router, menus, and domain screens.
+- `src/ui/App.tsx`: TUI router and layout shell.
+- `src/ui/screens/*`: Domain screens (home, wallet, user, network, messages, auth, config).
+- `src/ui/layout/*`: Shared layout components (status bar, commands).
 - `src/ui/components/*`: Reusable UI pieces (menus, forms, JSON view).
+- `src/ui/types.ts`: Shared route/nav/status types.
 - `src/ui/utils/clipboard.ts`: Best-effort clipboard copy helper for tokens.
+- `src/ui/utils/transactions.ts`: Transaction summary helpers.
 - `src/ui/theme.ts`: Shared color theme.
 - `src/mixin/config.ts`: Loads bot config (default `mixin-config.json` or override path).
 - `src/mixin/client.ts`: Initializes Mixin SDK client from config.
