@@ -26,19 +26,29 @@ const resolveConfigPath = (override?: string) => {
     : path.resolve(process.cwd(), "mixin-config.json");
 };
 
-export const loadConfig = async (overridePath?: string): Promise<MixinConfig> => {
-  const configPath = resolveConfigPath(overridePath);
-  const raw = await readFile(configPath, "utf-8");
-  const parsed = JSON.parse(raw) as Partial<MixinConfig>;
+export const parseConfig = (raw: string, source?: string): MixinConfig => {
+  let parsed: Partial<MixinConfig>;
+  try {
+    parsed = JSON.parse(raw) as Partial<MixinConfig>;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Invalid JSON${source ? ` in ${source}` : ""}: ${message}`);
+  }
 
   const missing = requiredKeys.filter((key) => !parsed[key]);
   if (missing.length > 0) {
     throw new Error(
-      `Missing config values: ${missing.join(", ")}. Check ${configPath}.`
+      `Missing config values: ${missing.join(", ")}.${source ? ` Check ${source}.` : ""}`
     );
   }
 
   return {
     ...parsed,
   } as MixinConfig;
+};
+
+export const loadConfig = async (overridePath?: string): Promise<MixinConfig> => {
+  const configPath = resolveConfigPath(overridePath);
+  const raw = await readFile(configPath, "utf-8");
+  return parseConfig(raw, configPath);
 };

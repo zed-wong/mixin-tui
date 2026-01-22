@@ -12,7 +12,7 @@ import { HomeScreen } from "./screens/HomeScreen.js";
 import { MenuScreen } from "./screens/MenuScreen.js";
 import { MessagesSendTextScreen, MessagesStreamScreen } from "./screens/MessageScreens.js";
 import {
-  NetworkAssetSearchScreen,
+  NetworkAssetFetchForm,
   NetworkAssetsScreen,
   SafeAssetsScreen,
 } from "./screens/NetworkScreens.js";
@@ -73,8 +73,6 @@ export const App: React.FC = () => {
         return "Network";
       case "network-top-assets":
         return "Top Assets";
-      case "network-asset-search":
-        return "Search Assets";
       case "network-asset-fetch":
         return "Fetch Asset";
       case "safe-menu":
@@ -90,7 +88,7 @@ export const App: React.FC = () => {
       case "messages-stream":
         return "Stream";
       case "config-switch":
-        return "Switch Config";
+        return "Manage Bots";
       case "result":
         return route.title;
       default:
@@ -129,13 +127,13 @@ export const App: React.FC = () => {
     []
   );
 
-  const loadConfiguration = async (path?: string) => {
-    setStatusMessage("loading", `Loading config from ${path || "default"}...`);
+  const loadConfiguration = async (path?: string, label?: string) => {
+    setStatusMessage("loading", `Loading config from ${label || path || "default"}...`);
     try {
       const config = await loadConfig(path);
       const client = createMixinClient(config);
       setServices(createServices(client, config));
-      setConfigPath(path || "default");
+      setConfigPath(label || path || "default");
       setStatusMessage("idle", "Ready");
     } catch (error) {
       setServices(null);
@@ -199,7 +197,7 @@ export const App: React.FC = () => {
           { label: "User", value: "user" },
           { label: "Messages", value: "messages" },
           { label: "Auth Token", value: "auth" },
-          { label: "Switch Config", value: "config" },
+          { label: "Manage Bots", value: "config" },
           { label: "Quit", value: "quit" },
         ];
         return (
@@ -388,7 +386,7 @@ export const App: React.FC = () => {
       case "network-menu": {
         const items: MenuItem[] = [
           { label: "Top Assets", value: "top" },
-          { label: "Search Assets", value: "search" },
+          { label: "Fetch Asset", value: "fetch" },
           { label: "Safe Assets", value: "safe_assets" },
           { label: "Back", value: "back" },
         ];
@@ -401,8 +399,7 @@ export const App: React.FC = () => {
             onBack={() => nav.pop()}
             onSelect={(item) => {
               if (item.value === "top") nav.push({ id: "network-top-assets" });
-              if (item.value === "search")
-                nav.push({ id: "network-asset-search" });
+              if (item.value === "fetch") nav.push({ id: "network-asset-fetch" });
               if (item.value === "safe_assets") nav.push({ id: "safe-assets" });
               if (item.value === "back") nav.pop();
             }}
@@ -422,15 +419,13 @@ export const App: React.FC = () => {
           />
         );
       }
-      case "network-asset-search": {
-        const listMaxItems = Math.max(3, dimensions.rows - 10);
+      case "network-asset-fetch": {
         return (
-          <NetworkAssetSearchScreen
+          <NetworkAssetFetchForm
             services={services}
             nav={nav}
             setStatus={setStatusMessage}
             inputEnabled={inputEnabled}
-            maxItems={listMaxItems}
             setCommandHints={setCommandHints}
           />
         );
@@ -494,9 +489,10 @@ export const App: React.FC = () => {
           <ConfigSwitchScreen
             inputEnabled={inputEnabled}
             onCancel={() => nav.pop()}
+            setStatus={setStatusMessage}
             setCommandHints={setCommandHints}
-            onSubmit={async (path) => {
-              await loadConfiguration(path);
+            onSelect={async ({ path, label }) => {
+              await loadConfiguration(path, label);
               nav.reset({ id: "home" });
             }}
           />

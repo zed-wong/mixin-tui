@@ -17,10 +17,12 @@
 - `src/ui/utils/transactions.ts`: Transaction summary helpers.
 - `src/ui/theme.ts`: Shared color theme.
 - `src/mixin/config.ts`: Loads bot config (default `mixin-config.json` or override path).
+- `src/mixin/configStore.ts`: Stores named bot configs under `~/.mixin-tui/configs`.
 - `src/mixin/client.ts`: Initializes Mixin SDK client from config.
 - `src/mixin/services/*`: Domain service wrappers (wallet, transfer, user, network, safe, messages, auth).
 
 ## Config
 - Default config path: `./mixin-config.json`
 - Override path via env `MIXIN_CONFIG` or in-TUI switch.
+- Saved configs live in `~/.mixin-tui/configs/*.json` and are listed in the switcher.
 - Config keys (from `mixin-config.json.example`): `app_id`, `session_id`, `server_public_key`, `session_private_key`, optional `spend_private_key`, `oauth_client_secret`.
