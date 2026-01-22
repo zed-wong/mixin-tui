@@ -6,7 +6,7 @@ export const THEME = {
   warning: "#eab308",
   text: "#f1f5f9",
   muted: "#64748b",
-  bg: "#020617",
+  bg: "#000000",
   border: "#1e293b",
   highlight: "#1e293b",
 };
