@@ -1,10 +1,17 @@
 {
   "name": "mixin-tui",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "bin": {
+    "mixin-tui": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "dev": "bun run src/index.tsx",
+    "build": "bun build ./src/index.tsx --outfile ./dist/index.js --target node --bundle --external react-devtools-core",
     "typecheck": "bun x tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

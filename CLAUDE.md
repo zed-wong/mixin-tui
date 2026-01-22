@@ -24,5 +24,6 @@
 ## Config
 - Default config path: `./mixin-config.json`
 - Override path via env `MIXIN_CONFIG` or in-TUI switch.
-- Saved configs live in `~/.mixin-tui/configs/*.json` and are listed in the switcher.
+- Saved configs live in `~/.mixin-tui/configs/*.json` and are listed in Manage Bots.
+- Manage Bots supports adding bots by pasting keystore JSON and removing saved bots.
 - Config keys (from `mixin-config.json.example`): `app_id`, `session_id`, `server_public_key`, `session_private_key`, optional `spend_private_key`, `oauth_client_secret`.
