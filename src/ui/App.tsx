@@ -10,6 +10,7 @@ import { MenuList, type MenuItem } from "./components/MenuList.js";
 import { FormView } from "./components/FormView.js";
 import { FormattedView } from "./components/JsonView.js";
 import { THEME } from "./theme.js";
+import { copyToClipboard } from "./utils/clipboard.js";
 
 type StatusState = "idle" | "loading" | "success" | "error";
 
@@ -40,7 +41,7 @@ type Route =
   | { id: "messages-send-text" }
   | { id: "messages-stream" }
   | { id: "config-switch" }
-  | { id: "result"; title: string; data: unknown };
+  | { id: "result"; title: string; data: unknown; copyText?: string };
 
 type WalletBalance = {
   assetId: string;
@@ -214,16 +215,31 @@ const ResultScreen: React.FC<{
   title: string;
   data: unknown;
   onBack: () => void;
+  onCopy?: () => void;
+  copyHint?: string;
   inputEnabled: boolean;
-}> = ({ title, data, onBack, inputEnabled }) => {
+}> = ({ title, data, onBack, onCopy, copyHint, inputEnabled }) => {
   useInput((input, key) => {
     if (!inputEnabled) return;
     if (key.escape || key.return || key.backspace) {
       onBack();
+      return;
+    }
+    if (onCopy && (input === "c" || input === "C")) {
+      onCopy();
     }
   });
 
-  return <FormattedView title={title} data={data} />;
+  return (
+    <Box flexDirection="column">
+      <FormattedView title={title} data={data} />
+      {copyHint ? (
+        <Box paddingX={1} marginTop={1}>
+          <Text color={THEME.muted}>{copyHint}</Text>
+        </Box>
+      ) : null}
+    </Box>
+  );
 };
 
 const ConfigSwitchScreen: React.FC<{
@@ -284,7 +300,12 @@ const AuthTokenScreen: React.FC<{
             exp: values.exp,
           })
           .then((result) => {
-            nav.push({ id: "result", title: "Auth Token", data: result });
+            nav.push({
+              id: "result",
+              title: "Auth Token",
+              data: result,
+              copyText: result.token,
+            });
             setStatus("idle", "Ready");
           })
           .catch((error) => {
@@ -1235,7 +1256,6 @@ export const App: React.FC = () => {
           { label: "Wallet", value: "wallet" },
           { label: "User", value: "user" },
           { label: "Network", value: "network" },
-          { label: "Safe", value: "safe" },
           { label: "Auth Token", value: "auth" },
           { label: "Messages", value: "messages" },
           { label: "Switch Config", value: "config" },
@@ -1256,9 +1276,6 @@ export const App: React.FC = () => {
                   break;
                 case "network":
                   nav.push({ id: "network-menu" });
-                  break;
-                case "safe":
-                  nav.push({ id: "safe-menu" });
                   break;
                 case "auth":
                   nav.push({ id: "auth-token" });
@@ -1419,6 +1436,7 @@ export const App: React.FC = () => {
       case "network-menu": {
         const items: MenuItem[] = [
           { label: "Top Assets", value: "top" },
+          { label: "Safe Assets", value: "safe_assets" },
           { label: "Back", value: "back" },
         ];
         return (
@@ -1429,6 +1447,7 @@ export const App: React.FC = () => {
             onBack={() => nav.pop()}
             onSelect={(item) => {
               if (item.value === "top") nav.push({ id: "network-top-assets" });
+              if (item.value === "safe_assets") nav.push({ id: "safe-assets" });
               if (item.value === "back") nav.pop();
             }}
           />
@@ -1443,24 +1462,6 @@ export const App: React.FC = () => {
             setStatus={setStatusMessage}
             inputEnabled={inputEnabled}
             maxItems={listMaxItems}
-          />
-        );
-      }
-      case "safe-menu": {
-        const items: MenuItem[] = [
-          { label: "Safe Assets", value: "assets" },
-          { label: "Back", value: "back" },
-        ];
-        return (
-          <MenuScreen
-            title="Safe"
-            items={items}
-            inputEnabled={inputEnabled}
-            onBack={() => nav.pop()}
-            onSelect={(item) => {
-              if (item.value === "assets") nav.push({ id: "safe-assets" });
-              if (item.value === "back") nav.pop();
-            }}
           />
         );
       }
@@ -1524,11 +1525,34 @@ export const App: React.FC = () => {
           />
         );
       case "result":
+        const copyText = currentRoute.copyText;
         return (
           <ResultScreen
             title={currentRoute.title}
             data={currentRoute.data}
             onBack={() => nav.pop()}
+            onCopy={
+              copyText
+                ? () => {
+                    setStatusMessage("loading", "Copying token...");
+                    void copyToClipboard(copyText)
+                      .then((copied) => {
+                        if (copied) {
+                          setStatusMessage("success", "Auth token copied.");
+                        } else {
+                          setStatusMessage("error", "Clipboard command not available.");
+                        }
+                      })
+                      .catch((error) => {
+                        setStatusMessage(
+                          "error",
+                          error instanceof Error ? error.message : String(error)
+                        );
+                      });
+                  }
+                : undefined
+            }
+            copyHint={copyText ? "Press C to copy auth token" : undefined}
             inputEnabled={inputEnabled}
           />
         );
