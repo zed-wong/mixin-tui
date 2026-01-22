@@ -65,14 +65,12 @@ export const MenuList: React.FC<MenuListProps> = ({
                 >
                    {item.icon ? `${item.icon} ` : ""}{item.label} 
                 </Text>
-              </Box>
-              {item.description && isSelected ? (
-                <Box marginLeft={2}>
+                {item.description ? (
                   <Text color={THEME.muted} dimColor>
-                    {item.description}
+                    {"  "}{item.description}
                   </Text>
-                </Box>
-              ) : null}
+                ) : null}
+              </Box>
             </Box>
           );
         })

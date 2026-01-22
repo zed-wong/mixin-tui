@@ -10,10 +10,11 @@
 - `src/index.tsx`: Ink entry point, renders `App`.
 - `src/ui/App.tsx`: TUI router, menus, and domain screens.
 - `src/ui/components/*`: Reusable UI pieces (menus, forms, JSON view).
+- `src/ui/utils/clipboard.ts`: Best-effort clipboard copy helper for tokens.
 - `src/ui/theme.ts`: Shared color theme.
 - `src/mixin/config.ts`: Loads bot config (default `mixin-config.json` or override path).
 - `src/mixin/client.ts`: Initializes Mixin SDK client from config.
-- `src/mixin/services/*`: Domain service wrappers (wallet, transfer, user, network, safe, messages).
+- `src/mixin/services/*`: Domain service wrappers (wallet, transfer, user, network, safe, messages, auth).
 
 ## Config
 - Default config path: `./mixin-config.json`

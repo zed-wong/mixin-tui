@@ -6,6 +6,7 @@ import { createUserService } from "./user.js";
 import { createNetworkService } from "./network.js";
 import { createSafeService } from "./safe.js";
 import { createMessagesService } from "./messages.js";
+import { createAuthService } from "./auth.js";
 
 export const createServices = (client: MixinClient, config: MixinConfig) => ({
   wallet: createWalletService(client),
@@ -14,6 +15,7 @@ export const createServices = (client: MixinClient, config: MixinConfig) => ({
   network: createNetworkService(client),
   safe: createSafeService(client),
   messages: createMessagesService(client),
+  auth: createAuthService(config),
 });
 
 export type MixinServices = ReturnType<typeof createServices>;

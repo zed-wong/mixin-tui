@@ -41,7 +41,13 @@ type Route =
   | { id: "messages-send-text" }
   | { id: "messages-stream" }
   | { id: "config-switch" }
-  | { id: "result"; title: string; data: unknown; copyText?: string };
+  | {
+      id: "result";
+      title: string;
+      data: unknown;
+      copyText?: string;
+      summaryLines?: string[];
+    };
 
 type WalletBalance = {
   assetId: string;
@@ -104,37 +110,6 @@ const StatusBar: React.FC<{ status: StatusState; message: string }> = ({
   );
 };
 
-const InputSection: React.FC<{
-  configPath: string;
-  command?: string;
-}> = ({ configPath, command }) => {
-  return (
-    <Box
-      flexDirection="column"
-      borderStyle="single"
-      borderColor={THEME.border}
-      paddingX={1}
-      paddingY={0}
-      height={3}
-    >
-      <Box>
-        <Text color={THEME.muted}>
-          {configPath ? `Config: ${configPath}` : "No Config"}
-        </Text>
-      </Box>
-      <Box>
-        <Text color={THEME.primary} bold>
-          ❯{" "}
-        </Text>
-        <Text color={THEME.text}>{command || ""}</Text>
-        <Text color={THEME.secondary} bold>
-          _
-        </Text>
-      </Box>
-    </Box>
-  );
-};
-
 const CommandsView: React.FC = () => (
   <Box flexDirection="column" paddingX={1} paddingY={1}>
     <Box marginBottom={1}>
@@ -170,6 +145,41 @@ const CommandsView: React.FC = () => (
     </Box>
   </Box>
 );
+
+const decodeExtra = (extra?: string) => {
+  if (!extra) return "";
+  const normalized = extra.trim();
+  if (/^[0-9a-fA-F]+$/.test(normalized) && normalized.length % 2 === 0) {
+    try {
+      return Buffer.from(normalized, "hex").toString();
+    } catch {
+      return normalized;
+    }
+  }
+  return normalized;
+};
+
+const buildTxSummary = (entry: Record<string, unknown>, opponentId?: string) => {
+  const createdAt = String(entry.created_at ?? "");
+  const requestId = String(entry.request_id ?? "");
+  const snapshotId = String(entry.snapshot_id ?? "");
+  const transactionHash = String(entry.transaction_hash ?? "");
+  const memo = decodeExtra(typeof entry.extra === "string" ? entry.extra : undefined);
+  const receivers = Array.isArray(entry.receivers)
+    ? entry.receivers.map(String).join(", ")
+    : "";
+  const opponent = opponentId || receivers;
+  const link = transactionHash ? `https://mixin.space/tx/${transactionHash}` : "";
+
+  return [
+    `opponent_id: ${opponent}`,
+    `trace_id: ${requestId}`,
+    `snapshot_id: ${snapshotId}`,
+    `created_at: ${createdAt}`,
+    `memo: ${memo}`,
+    `tx: ${link}`,
+  ];
+};
 
 const MenuScreen: React.FC<{
   title: string;
@@ -219,7 +229,17 @@ const ResultScreen: React.FC<{
   copyHint?: string;
   inputEnabled: boolean;
   maxItems?: number;
-}> = ({ title, data, onBack, onCopy, copyHint, inputEnabled, maxItems }) => {
+  summaryLines?: string[];
+}> = ({
+  title,
+  data,
+  onBack,
+  onCopy,
+  copyHint,
+  inputEnabled,
+  maxItems,
+  summaryLines,
+}) => {
   useInput((input, key) => {
     if (!inputEnabled) return;
     if (key.escape || key.return || key.backspace) {
@@ -233,6 +253,22 @@ const ResultScreen: React.FC<{
 
   return (
     <Box flexDirection="column">
+      {summaryLines && summaryLines.length > 0 ? (
+        <Box
+          flexDirection="column"
+          paddingX={1}
+          marginBottom={1}
+          borderStyle="single"
+          borderColor={THEME.border}
+          padding={1}
+        >
+          {summaryLines.map((line) => (
+            <Text key={line} color={THEME.text}>
+              {line}
+            </Text>
+          ))}
+        </Box>
+      ) : null}
       <FormattedView
         title={title}
         data={data}
@@ -707,7 +743,19 @@ const TransferToUserScreen: React.FC<{
             memo: values.memo ?? "",
           })
           .then((result) => {
-            nav.push({ id: "result", title: "Transfer Result", data: result });
+            const entry = Array.isArray(result) ? result[0] : result;
+            const summaryLines = entry
+              ? buildTxSummary(
+                  entry as unknown as Record<string, unknown>,
+                  values.opponentId ?? ""
+                )
+              : undefined;
+            nav.push({
+              id: "result",
+              title: "Transfer Result",
+              data: result,
+              summaryLines,
+            });
             setStatus("idle", "Ready");
           })
           .catch((error) => {
@@ -743,7 +791,16 @@ const RefundScreen: React.FC<{
         services.transfer
           .refundSnapshot(values.snapshotId ?? "")
           .then((result) => {
-            nav.push({ id: "result", title: "Refund Result", data: result });
+            const entry = Array.isArray(result) ? result[0] : result;
+            const summaryLines = entry
+              ? buildTxSummary(entry as unknown as Record<string, unknown>)
+              : undefined;
+            nav.push({
+              id: "result",
+              title: "Refund Result",
+              data: result,
+              summaryLines,
+            });
             setStatus("idle", "Ready");
           })
           .catch((error) => {
@@ -1150,14 +1207,9 @@ export const App: React.FC = () => {
   const [message, setMessage] = useState("Initializing...");
   const [configPath, setConfigPath] = useState("default");
   const [commandsVisible, setCommandsVisible] = useState(false);
-  const [command, setCommand] = useState("");
   const [routeStack, setRouteStack] = useState<Route[]>([{ id: "home" }]);
 
   const currentRoute = routeStack[routeStack.length - 1];
-
-  useEffect(() => {
-    setCommand("");
-  }, [currentRoute.id]);
 
   const nav = useMemo<Nav>(
     () => ({
@@ -1236,20 +1288,6 @@ export const App: React.FC = () => {
       exit();
     }
 
-    if (!commandsVisible) {
-      if (key.backspace || key.delete) {
-        setCommand((prev) => prev.slice(0, -1));
-        return;
-      }
-      if (
-        !key.ctrl &&
-        !key.meta &&
-        input.length === 1 &&
-        /^[a-zA-Z0-9\s]$/.test(input)
-      ) {
-        setCommand((prev) => prev + input);
-      }
-    }
   });
 
   const helpText = "[Up/Down] Nav [Enter] Select [Esc] Back [Q] Quit [Ctrl+P] Cmds";
@@ -1562,6 +1600,7 @@ export const App: React.FC = () => {
             copyHint={copyText ? "Press C to copy auth token" : undefined}
             inputEnabled={inputEnabled}
             maxItems={resultMaxItems}
+            summaryLines={currentRoute.summaryLines}
           />
         );
     }
