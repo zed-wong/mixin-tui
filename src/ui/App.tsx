@@ -38,7 +38,7 @@ type Route =
   | { id: "safe-assets" }
   | { id: "auth-token" }
   | { id: "messages-menu" }
-  | { id: "messages-send-text" }
+  | { id: "messages-send-text"; userId?: string; returnToStream?: boolean }
   | { id: "messages-stream" }
   | { id: "config-switch" }
   | {
@@ -47,6 +47,7 @@ type Route =
       data: unknown;
       copyText?: string;
       summaryLines?: string[];
+      refundSnapshotId?: string;
     };
 
 type WalletBalance = {
@@ -56,6 +57,18 @@ type WalletBalance = {
   balance: string;
   iconUrl?: string;
 };
+
+type StreamMessage = {
+  id: string;
+  userId: string;
+  category: string;
+  content: string;
+  createdAt: string;
+  senderName?: string;
+};
+
+const SNAPSHOT_CACHE_TTL = 10000;
+const snapshotCache = new Map<string, { items: MenuItem[]; timestamp: number }>();
 
 type Nav = {
   push: (route: Route) => void;
@@ -230,6 +243,8 @@ const ResultScreen: React.FC<{
   inputEnabled: boolean;
   maxItems?: number;
   summaryLines?: string[];
+  onRefund?: () => void;
+  refundHint?: string;
 }> = ({
   title,
   data,
@@ -239,6 +254,8 @@ const ResultScreen: React.FC<{
   inputEnabled,
   maxItems,
   summaryLines,
+  onRefund,
+  refundHint,
 }) => {
   useInput((input, key) => {
     if (!inputEnabled) return;
@@ -248,6 +265,9 @@ const ResultScreen: React.FC<{
     }
     if (onCopy && (input === "c" || input === "C")) {
       onCopy();
+    }
+    if (onRefund && (input === "r" || input === "R")) {
+      onRefund();
     }
   });
 
@@ -275,9 +295,10 @@ const ResultScreen: React.FC<{
         inputEnabled={inputEnabled}
         maxItems={maxItems}
       />
-      {copyHint ? (
+      {copyHint || refundHint ? (
         <Box paddingX={1} marginTop={1}>
-          <Text color={THEME.muted}>{copyHint}</Text>
+          {copyHint ? <Text color={THEME.muted}>{copyHint}</Text> : null}
+          {refundHint ? <Text color={THEME.muted}>{refundHint}</Text> : null}
         </Box>
       ) : null}
     </Box>
@@ -372,6 +393,8 @@ const WalletAssetsScreen: React.FC<{
   const fetchingRef = useRef(new Set<string>());
   const fetchRequestRef = useRef(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const cancelBalanceFetch = () => {
     fetchRequestRef.current += 1;
@@ -381,6 +404,8 @@ const WalletAssetsScreen: React.FC<{
   useEffect(() => {
     if (!services) return;
     const requestId = (fetchRequestRef.current += 1);
+    setLoading(true);
+    setHasLoaded(false);
     setStatus("loading", "Fetching balances...");
     services.wallet
       .listBalances()
@@ -388,10 +413,14 @@ const WalletAssetsScreen: React.FC<{
         if (requestId !== fetchRequestRef.current) return;
         setBalances(data);
         setStatus("idle", "Ready");
+        setLoading(false);
+        setHasLoaded(true);
       })
       .catch((error) => {
         if (requestId !== fetchRequestRef.current) return;
         setStatus("error", error instanceof Error ? error.message : String(error));
+        setLoading(false);
+        setHasLoaded(true);
       });
     return () => {
       fetchRequestRef.current += 1;
@@ -468,6 +497,10 @@ const WalletAssetsScreen: React.FC<{
 
   if (!services) {
     return <Text color={THEME.muted}>Load a config to view balances.</Text>;
+  }
+
+  if ((loading || !hasLoaded) && items.length === 0) {
+    return <Text color={THEME.muted}>Loading balances...</Text>;
   }
 
   return (
@@ -600,6 +633,8 @@ const WalletSnapshotsScreen: React.FC<{
     };
   }, [filters]);
 
+  const requestKey = useMemo(() => JSON.stringify(request), [request]);
+
   const loadSnapshots = () => {
     if (!services) return;
     const requestId = (fetchRequestRef.current += 1);
@@ -615,6 +650,7 @@ const WalletSnapshotsScreen: React.FC<{
           description: `${formatTimestamp(snapshot.created_at)}  ${snapshot.type}`,
         }));
         setItems(mapped);
+        snapshotCache.set(requestKey, { items: mapped, timestamp: Date.now() });
         setStatus("idle", "Ready");
         setLoading(false);
       })
@@ -626,11 +662,18 @@ const WalletSnapshotsScreen: React.FC<{
   };
 
   useEffect(() => {
+    const cached = snapshotCache.get(requestKey);
+    if (cached && Date.now() - cached.timestamp < SNAPSHOT_CACHE_TTL) {
+      setItems(cached.items);
+      setLoading(false);
+      setStatus("idle", "Ready");
+      return;
+    }
     loadSnapshots();
     return () => {
       fetchRequestRef.current += 1;
     };
-  }, [services, request]);
+  }, [services, requestKey]);
 
   useInput((input, key) => {
     if (!inputEnabled) return;
@@ -662,13 +705,18 @@ const WalletSnapshotsScreen: React.FC<{
       setStatus("loading", "Loading snapshot detail...");
         services.safe
           .snapshotDetail(items[selectedIndex].value)
-        .then((snapshot) => {
-          nav.push({ id: "result", title: "Snapshot Detail", data: snapshot });
-          setStatus("idle", "Ready");
-        })
-        .catch((error) => {
-          setStatus("error", error instanceof Error ? error.message : String(error));
-        });
+          .then((snapshot) => {
+            nav.push({
+              id: "result",
+              title: "Snapshot Detail",
+              data: snapshot,
+              refundSnapshotId: snapshot.snapshot_id,
+            });
+            setStatus("idle", "Ready");
+          })
+          .catch((error) => {
+            setStatus("error", error instanceof Error ? error.message : String(error));
+          });
     }
   });
 
@@ -713,7 +761,12 @@ const WalletSnapshotDetailForm: React.FC<{
         services.safe
           .snapshotDetail(values.snapshotId ?? "")
           .then((snapshot) => {
-            nav.push({ id: "result", title: "Snapshot Detail", data: snapshot });
+            nav.push({
+              id: "result",
+              title: "Snapshot Detail",
+              data: snapshot,
+              refundSnapshotId: snapshot.snapshot_id,
+            });
             setStatus("idle", "Ready");
           })
           .catch((error) => {
@@ -921,9 +974,13 @@ const NetworkAssetsScreen: React.FC<{
   const [items, setItems] = useState<MenuItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [raw, setRaw] = useState<AssetResponse[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
     if (!services) return;
+    setLoading(true);
+    setHasLoaded(false);
     setStatus("loading", "Fetching network assets...");
     services.network
       .topAssets()
@@ -937,9 +994,13 @@ const NetworkAssetsScreen: React.FC<{
           }))
         );
         setStatus("idle", "Ready");
+        setLoading(false);
+        setHasLoaded(true);
       })
       .catch((error) => {
         setStatus("error", error instanceof Error ? error.message : String(error));
+        setLoading(false);
+        setHasLoaded(true);
       });
   }, [services, setStatus]);
 
@@ -972,6 +1033,10 @@ const NetworkAssetsScreen: React.FC<{
     return <Text color={THEME.muted}>Load a config to fetch network assets.</Text>;
   }
 
+  if ((loading || !hasLoaded) && items.length === 0) {
+    return <Text color={THEME.muted}>Loading network assets...</Text>;
+  }
+
   return (
     <MenuList
       title="Network Top Assets"
@@ -992,9 +1057,13 @@ const SafeAssetsScreen: React.FC<{
   const [items, setItems] = useState<MenuItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [raw, setRaw] = useState<SafeAsset[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
     if (!services) return;
+    setLoading(true);
+    setHasLoaded(false);
     setStatus("loading", "Fetching safe assets...");
     services.safe
       .assets()
@@ -1008,9 +1077,13 @@ const SafeAssetsScreen: React.FC<{
           }))
         );
         setStatus("idle", "Ready");
+        setLoading(false);
+        setHasLoaded(true);
       })
       .catch((error) => {
         setStatus("error", error instanceof Error ? error.message : String(error));
+        setLoading(false);
+        setHasLoaded(true);
       });
   }, [services, setStatus]);
 
@@ -1039,6 +1112,10 @@ const SafeAssetsScreen: React.FC<{
     return <Text color={THEME.muted}>Load a config to fetch safe assets.</Text>;
   }
 
+  if ((loading || !hasLoaded) && items.length === 0) {
+    return <Text color={THEME.muted}>Loading safe assets...</Text>;
+  }
+
   return (
     <MenuList
       title="Safe Assets"
@@ -1054,7 +1131,16 @@ const MessagesSendTextScreen: React.FC<{
   nav: Nav;
   setStatus: (state: StatusState, message: string) => void;
   inputEnabled: boolean;
-}> = ({ services, nav, setStatus, inputEnabled }) => {
+  initialUserId?: string;
+  returnToStream?: boolean;
+}> = ({
+  services,
+  nav,
+  setStatus,
+  inputEnabled,
+  initialUserId,
+  returnToStream,
+}) => {
   if (!services) {
     return <Text color={THEME.muted}>Load a config to send messages.</Text>;
   }
@@ -1063,7 +1149,12 @@ const MessagesSendTextScreen: React.FC<{
     <FormView
       title="Send Text Message"
       fields={[
-        { key: "userId", label: "User ID", placeholder: "UUID" },
+        {
+          key: "userId",
+          label: "User ID",
+          placeholder: "UUID",
+          initialValue: initialUserId,
+        },
         { key: "text", label: "Message", placeholder: "Text" },
       ]}
       onCancel={() => nav.pop()}
@@ -1071,11 +1162,18 @@ const MessagesSendTextScreen: React.FC<{
       onSubmit={(values) => {
         if (!inputEnabled) return;
         setStatus("loading", "Sending message...");
+        const userId = values.userId?.trim() ?? "";
+        const text = values.text ?? "";
         services.messages
-          .sendText(values.userId ?? "", values.text ?? "")
+          .sendText(userId, text)
           .then((result) => {
-            nav.push({ id: "result", title: "Message Result", data: result });
-            setStatus("idle", "Ready");
+            if (returnToStream) {
+              setStatus("success", "Message sent");
+              nav.pop();
+            } else {
+              nav.push({ id: "result", title: "Message Result", data: result });
+              setStatus("idle", "Ready");
+            }
           })
           .catch((error) => {
             setStatus(
@@ -1094,17 +1192,10 @@ const MessagesStreamScreen: React.FC<{
   setStatus: (state: StatusState, message: string) => void;
   inputEnabled: boolean;
 }> = ({ services, nav, setStatus, inputEnabled }) => {
-  type StreamMessage = {
-    id: string;
-    userId: string;
-    category: string;
-    content: string;
-    createdAt: string;
-  };
-
   const [messages, setMessages] = useState<StreamMessage[]>([]);
   const [userMap, setUserMap] = useState<Record<string, string>>({});
   const fetchedUsers = useRef<Set<string>>(new Set());
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const formatTime = (iso: string) => {
     try {
@@ -1114,17 +1205,47 @@ const MessagesStreamScreen: React.FC<{
     }
   };
 
+  const appendMessage = useCallback((nextMessage: StreamMessage) => {
+    setMessages((prev) => {
+      const next = [...prev, nextMessage].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      return next.slice(-50);
+    });
+  }, []);
+
   useEffect(() => {
     if (!services) return;
     setStatus("loading", "Connecting to message stream...");
     
     setMessages([]);
+    setSelectedIndex(null);
     
     services.messages.startStream({
       onMessage: (message: any) => {
         let content = "";
         if (message.category === "PLAIN_TEXT") {
-          content = typeof message.data === "string" ? message.data : JSON.stringify(message.data);
+          if (typeof message.data === "string") {
+            content = message.data;
+          } else if (message.data instanceof Uint8Array) {
+            content = Buffer.from(message.data).toString();
+          } else if (
+            Array.isArray(message.data) &&
+            message.data.every((value: unknown) => typeof value === "number")
+          ) {
+            content = Buffer.from(message.data).toString();
+          } else if (
+            message.data &&
+            typeof message.data === "object" &&
+            "type" in message.data &&
+            (message.data as { type?: string }).type === "Buffer" &&
+            "data" in message.data &&
+            Array.isArray((message.data as { data?: unknown }).data)
+          ) {
+            content = Buffer.from((message.data as { data: number[] }).data).toString();
+          } else {
+            content = JSON.stringify(message.data);
+          }
         } else if (message.category === "SYSTEM_ACCOUNT_SNAPSHOT") {
              const data = message.data;
              const amount = data.amount || "?";
@@ -1142,13 +1263,14 @@ const MessagesStreamScreen: React.FC<{
           createdAt: message.created_at,
         };
 
-        setMessages((prev) => [...prev, newMsg].slice(-50));
+        appendMessage(newMsg);
 
-        if (!fetchedUsers.current.has(message.user_id)) {
-          fetchedUsers.current.add(message.user_id);
-          
+        const userId = message.user_id?.trim();
+        if (userId && !fetchedUsers.current.has(userId)) {
+          fetchedUsers.current.add(userId);
+
           services.user
-            .fetch(message.user_id)
+            .fetch(userId)
             .then((user) => {
               setUserMap((prev) => ({
                 ...prev,
@@ -1156,7 +1278,7 @@ const MessagesStreamScreen: React.FC<{
               }));
             })
             .catch(() => {
-              fetchedUsers.current.delete(message.user_id);
+              fetchedUsers.current.delete(userId);
             });
         }
       },
@@ -1168,18 +1290,79 @@ const MessagesStreamScreen: React.FC<{
     };
   }, [services, setStatus]);
 
-  useInput((input, key) => {
-    if (!inputEnabled) return;
-    if (key.escape || key.return) {
-      nav.pop();
-    }
-  });
-
   if (!services) {
     return <Text color={THEME.muted}>Load a config to stream messages.</Text>;
   }
 
   const displayMessages = messages.slice(-15);
+  const selectedMessage =
+    selectedIndex !== null ? displayMessages[selectedIndex] : null;
+  const selectedSender = selectedMessage
+    ? selectedMessage.senderName ||
+      userMap[selectedMessage.userId] ||
+      "User"
+    : null;
+  const headerHint = selectedSender
+    ? `Reply to ${selectedSender} (Enter/R)`
+    : "Up/Down to select · Esc to stop";
+
+  useEffect(() => {
+    if (selectedIndex === null) return;
+    if (displayMessages.length === 0) {
+      setSelectedIndex(null);
+      return;
+    }
+    if (selectedIndex >= displayMessages.length) {
+      setSelectedIndex(displayMessages.length - 1);
+    }
+  }, [displayMessages.length, selectedIndex]);
+
+  useInput((input, key) => {
+    if (!inputEnabled) return;
+
+    if (key.escape) {
+      if (selectedIndex !== null) {
+        setSelectedIndex(null);
+        return;
+      }
+      nav.pop();
+      return;
+    }
+
+    if (key.upArrow) {
+      if (displayMessages.length === 0) return;
+      setSelectedIndex((prev) => {
+        if (prev === null) return displayMessages.length - 1;
+        return Math.max(0, prev - 1);
+      });
+      return;
+    }
+
+    if (key.downArrow) {
+      if (displayMessages.length === 0) return;
+      setSelectedIndex((prev) => {
+        if (prev === null) return 0;
+        return Math.min(displayMessages.length - 1, prev + 1);
+      });
+      return;
+    }
+
+    if ((input === "r" || key.return) && selectedIndex !== null) {
+      const msg = displayMessages[selectedIndex];
+      if (msg) {
+        nav.push({
+          id: "messages-send-text",
+          userId: msg.userId,
+          returnToStream: true,
+        });
+      }
+      return;
+    }
+
+    if (key.return) {
+      nav.pop();
+    }
+  });
 
   return (
     <Box flexDirection="column" paddingX={1}>
@@ -1188,23 +1371,46 @@ const MessagesStreamScreen: React.FC<{
           MESSAGE STREAM
         </Text>
         <Spacer />
-        <Text color={THEME.muted}>Esc to stop</Text>
+        <Text color={selectedMessage ? THEME.secondary : THEME.muted}>
+          {headerHint}
+        </Text>
       </Box>
       {messages.length === 0 ? (
         <Text color={THEME.muted}>Waiting for messages...</Text>
       ) : (
         <Box flexDirection="column">
           {displayMessages.map((msg) => {
-            const senderName = userMap[msg.userId] || msg.userId.slice(0, 8);
+            const senderName =
+              msg.senderName || userMap[msg.userId] || "User";
+            const isSelected = selectedMessage?.id === msg.id;
             return (
               <Box key={msg.id} flexDirection="column" marginBottom={1}>
                 <Box>
-                  <Text color={THEME.muted}>[{formatTime(msg.createdAt)}] </Text>
-                  <Text color={THEME.primary} bold>
+                  <Text color={isSelected ? THEME.secondary : THEME.muted}>
+                    {isSelected ? "› " : "  "}
+                  </Text>
+                  <Text
+                    color={THEME.muted}
+                    backgroundColor={isSelected ? THEME.highlight : undefined}
+                  >
+                    [{formatTime(msg.createdAt)}] 
+                  </Text>
+                  <Text
+                    color={THEME.primary}
+                    bold
+                    backgroundColor={isSelected ? THEME.highlight : undefined}
+                  >
                     {senderName}
                   </Text>
                 </Box>
-                <Box paddingLeft={1} borderStyle="single" borderTop={false} borderRight={false} borderBottom={false} borderColor={THEME.border}>
+                <Box
+                  paddingLeft={1}
+                  borderStyle="single"
+                  borderTop={false}
+                  borderRight={false}
+                  borderBottom={false}
+                  borderColor={isSelected ? THEME.secondary : THEME.border}
+                >
                   <Text color={THEME.text}>{msg.content}</Text>
                 </Box>
               </Box>
@@ -1569,6 +1775,8 @@ export const App: React.FC = () => {
             nav={nav}
             setStatus={setStatusMessage}
             inputEnabled={inputEnabled}
+            initialUserId={currentRoute.userId}
+            returnToStream={currentRoute.returnToStream}
           />
         );
       case "messages-stream":
@@ -1594,6 +1802,41 @@ export const App: React.FC = () => {
       case "result":
         const copyText = currentRoute.copyText;
         const resultMaxItems = Math.max(3, dimensions.rows - 10);
+        const refundSnapshotId = currentRoute.refundSnapshotId;
+        const refundEnabled =
+          refundSnapshotId &&
+          (() => {
+            const data = currentRoute.data as Record<string, unknown>;
+            const amount = Number(data?.amount ?? 0);
+            return amount > 0;
+          })();
+        const onRefund =
+          refundEnabled && services
+            ? () => {
+                setStatusMessage("loading", "Refunding transfer...");
+                services.transfer
+                  .refundSnapshot(refundSnapshotId)
+                  .then((result) => {
+                    const entry = Array.isArray(result) ? result[0] : result;
+                    const summaryLines = entry
+                      ? buildTxSummary(entry as unknown as Record<string, unknown>)
+                      : undefined;
+                    nav.push({
+                      id: "result",
+                      title: "Refund Result",
+                      data: result,
+                      summaryLines,
+                    });
+                    setStatusMessage("idle", "Ready");
+                  })
+                  .catch((error) => {
+                    setStatusMessage(
+                      "error",
+                      error instanceof Error ? error.message : String(error)
+                    );
+                  });
+              }
+            : undefined;
         return (
           <ResultScreen
             title={currentRoute.title}
@@ -1624,6 +1867,8 @@ export const App: React.FC = () => {
             inputEnabled={inputEnabled}
             maxItems={resultMaxItems}
             summaryLines={currentRoute.summaryLines}
+            onRefund={onRefund}
+            refundHint={onRefund ? "Press R to refund snapshot" : undefined}
           />
         );
     }
