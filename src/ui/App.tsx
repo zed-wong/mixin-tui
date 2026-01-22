@@ -70,53 +70,80 @@ const StatusBar: React.FC<{ status: StatusState; message: string }> = ({
           : THEME.primary;
 
   return (
-    <Box borderStyle="single" borderColor={THEME.border} paddingX={1} justifyContent="space-between">
-      <Box>
-        <Text color={THEME.muted}>STATUS: </Text>
-        <Text color={color} bold>
-          {status.toUpperCase()}
-        </Text>
-      </Box>
+    <Box paddingX={1} flexDirection="row" height={1} alignItems="center">
+      <Text color={THEME.muted}>{"~ "}</Text>
+      <Text color={color} bold>
+        {status === "idle" ? "ready" : status}
+      </Text>
+      <Text color={THEME.muted}> · </Text>
       <Text color={THEME.text}>{message}</Text>
     </Box>
   );
 };
 
-const Header: React.FC<{ configPath: string }> = ({ configPath }) => (
-  <Box
-    borderStyle="round"
-    borderColor={THEME.primary}
-    paddingX={2}
-    justifyContent="space-between"
-  >
-    <Box>
-      <Text color={THEME.primary} bold>
-        MIXIN
-      </Text>
-      <Text color={THEME.secondary}> TUI</Text>
+const InputSection: React.FC<{
+  configPath: string;
+  command?: string;
+}> = ({ configPath, command }) => {
+  return (
+    <Box
+      flexDirection="column"
+      borderStyle="single"
+      borderColor={THEME.border}
+      paddingX={1}
+      paddingY={0}
+      height={3}
+    >
+      <Box>
+        <Text color={THEME.muted}>
+          {configPath ? `Config: ${configPath}` : "No Config"}
+        </Text>
+      </Box>
+      <Box>
+        <Text color={THEME.primary} bold>
+          ❯{" "}
+        </Text>
+        <Text color={THEME.text}>{command || ""}</Text>
+        <Text color={THEME.secondary} bold>
+          _
+        </Text>
+      </Box>
     </Box>
-    <Box>
-      <Text color={THEME.muted}>
-        {configPath ? `Config: ${configPath}` : "No Config Loaded"}
-      </Text>
-    </Box>
-  </Box>
-);
+  );
+};
 
 const CommandsView: React.FC = () => (
-  <Box flexDirection="column" paddingX={1} borderStyle="single" borderColor={THEME.border} padding={1}>
+  <Box flexDirection="column" paddingX={1} paddingY={1}>
     <Box marginBottom={1}>
       <Text bold color={THEME.primary}>
         COMMANDS
       </Text>
     </Box>
     <Box flexDirection="column">
-      <Box><Text color={THEME.secondary}>/</Text><Text color={THEME.muted}>        Open commands</Text></Box>
-      <Box><Text color={THEME.secondary}>Ctrl+P</Text><Text color={THEME.muted}>   Toggle commands</Text></Box>
-      <Box><Text color={THEME.secondary}>Up/Down</Text><Text color={THEME.muted}>  Navigate</Text></Box>
-      <Box><Text color={THEME.secondary}>Enter</Text><Text color={THEME.muted}>    Select/Submit</Text></Box>
-      <Box><Text color={THEME.secondary}>Esc</Text><Text color={THEME.muted}>      Back/Cancel</Text></Box>
-      <Box><Text color={THEME.secondary}>Q</Text><Text color={THEME.muted}>        Quit</Text></Box>
+      <Box>
+        <Text color={THEME.secondary}>/</Text>
+        <Text color={THEME.muted}> Open commands</Text>
+      </Box>
+      <Box>
+        <Text color={THEME.secondary}>Ctrl+P</Text>
+        <Text color={THEME.muted}> Toggle commands</Text>
+      </Box>
+      <Box>
+        <Text color={THEME.secondary}>Up/Down</Text>
+        <Text color={THEME.muted}> Navigate</Text>
+      </Box>
+      <Box>
+        <Text color={THEME.secondary}>Enter</Text>
+        <Text color={THEME.muted}> Select/Submit</Text>
+      </Box>
+      <Box>
+        <Text color={THEME.secondary}>Esc</Text>
+        <Text color={THEME.muted}> Back/Cancel</Text>
+      </Box>
+      <Box>
+        <Text color={THEME.secondary}>Q</Text>
+        <Text color={THEME.muted}> Quit</Text>
+      </Box>
     </Box>
   </Box>
 );
@@ -1414,22 +1441,21 @@ export const App: React.FC = () => {
       flexDirection="column"
       width={dimensions.columns}
       height={dimensions.rows}
-      borderStyle="round"
-      borderColor={THEME.border}
-      padding={1}
+      padding={0}
+      marginBottom={0}
     >
-      <Header configPath={configPath} />
-      <Spacer />
-      <Box minHeight={12} paddingY={1}>
+      <Box flexGrow={1} flexDirection="column" paddingX={1} overflow="hidden">
+        <Box marginBottom={1}>
+          <Text color={THEME.muted}>
+            ~/{configPath ? configPath : "mixin-tui"} · {currentRoute.id}
+          </Text>
+        </Box>
         {commandsVisible ? <CommandsView /> : renderScreen()}
       </Box>
-      <Spacer />
+
       <StatusBar status={status} message={message} />
-      <Box marginTop={0} paddingX={1} justifyContent="center">
-        <Text color={THEME.muted} dimColor>
-          {helpText.replace(/\[/g, " ").replace(/\]/g, "")}
-        </Text>
-      </Box>
+
+      <InputSection configPath={configPath} />
     </Box>
   );
 };
