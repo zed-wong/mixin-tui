@@ -1,0 +1,127 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { Box, Text, useInput, Newline } from "ink";
+import { THEME } from "../theme.js";
+
+export type FormField = {
+  key: string;
+  label: string;
+  placeholder?: string;
+  initialValue?: string;
+};
+
+type FormViewProps = {
+  title: string;
+  fields: FormField[];
+  onSubmit: (values: Record<string, string>) => void | Promise<void>;
+  onCancel: () => void;
+  helpText?: string;
+  inputEnabled?: boolean;
+};
+
+export const FormView: React.FC<FormViewProps> = ({
+  title,
+  fields,
+  onSubmit,
+  onCancel,
+  helpText,
+  inputEnabled = true,
+}) => {
+  const initialValues = useMemo(
+    () =>
+      fields.reduce<Record<string, string>>((acc, field) => {
+        acc[field.key] = field.initialValue ?? "";
+        return acc;
+      }, {}),
+    [fields]
+  );
+
+  const [values, setValues] = useState<Record<string, string>>(initialValues);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    setValues(initialValues);
+    setActiveIndex(0);
+  }, [initialValues]);
+
+  useInput((input, key) => {
+    if (!inputEnabled) return;
+    if (key.escape) {
+      onCancel();
+      return;
+    }
+
+    if (key.upArrow) {
+      setActiveIndex((index) => Math.max(0, index - 1));
+      return;
+    }
+
+    if (key.downArrow) {
+      setActiveIndex((index) => Math.min(fields.length - 1, index + 1));
+      return;
+    }
+
+    if (key.return) {
+      if (activeIndex < fields.length - 1) {
+        setActiveIndex((index) => Math.min(fields.length - 1, index + 1));
+      } else {
+        onSubmit(values);
+      }
+      return;
+    }
+
+    const currentKey = fields[activeIndex]?.key;
+    if (!currentKey) {
+      return;
+    }
+
+    if (key.backspace || key.delete) {
+      setValues((prev) => ({
+        ...prev,
+        [currentKey]: prev[currentKey].slice(0, -1),
+      }));
+      return;
+    }
+
+    if (!key.ctrl && !key.meta) {
+      setValues((prev) => ({
+        ...prev,
+        [currentKey]: prev[currentKey] + input,
+      }));
+    }
+  });
+
+  return (
+    <Box flexDirection="column" paddingX={1}>
+      <Box marginBottom={1}>
+        <Text bold underline color={THEME.text}>
+          {title}
+        </Text>
+      </Box>
+      {fields.map((field, index) => (
+        <Box key={field.key} flexDirection="row">
+          <Box width={18}>
+            <Text
+              color={index === activeIndex ? THEME.secondary : THEME.muted}
+              bold={index === activeIndex}
+            >
+              {field.label}
+            </Text>
+          </Box>
+          <Text color={THEME.muted}>: </Text>
+          <Text color={index === activeIndex ? THEME.text : THEME.muted}>
+            {values[field.key]?.length
+              ? values[field.key]
+              : index === activeIndex
+                ? ""
+                : field.placeholder}
+          </Text>
+          {index === activeIndex && <Text color={THEME.secondary}>_</Text>}
+        </Box>
+      ))}
+      <Newline />
+      <Text color={THEME.muted}>
+        {helpText || "Use Enter to move, Enter on last field to submit."}
+      </Text>
+    </Box>
+  );
+};
