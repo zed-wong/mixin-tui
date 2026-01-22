@@ -7,6 +7,7 @@ export type FormField = {
   label: string;
   placeholder?: string;
   initialValue?: string;
+  type?: "text" | "password" | "textarea";
 };
 
 type FormViewProps = {
@@ -17,6 +18,29 @@ type FormViewProps = {
   helpText?: string;
   inputEnabled?: boolean;
   setCommandHints?: (hints: string) => void;
+};
+
+const renderFieldValue = (field: FormField, value: string) => {
+  if (!value) return null;
+
+  if (field.type === "password") {
+    return "*".repeat(Math.min(value.length, 20));
+  }
+
+  const collapsed = value.replace(/\s+/g, " ");
+  
+  if (field.type === "textarea" || collapsed.length > 50) {
+    const preview = collapsed.length > 45 
+      ? `${collapsed.slice(0, 20)}...${collapsed.slice(-20)}`
+      : collapsed;
+    return (
+      <Text>
+        {preview} <Text color={THEME.muted}>({value.length} chars)</Text>
+      </Text>
+    );
+  }
+
+  return collapsed;
 };
 
 export const FormView: React.FC<FormViewProps> = ({
@@ -124,7 +148,7 @@ export const FormView: React.FC<FormViewProps> = ({
                 backgroundColor={index === activeIndex ? THEME.highlight : undefined}
               >
                  {values[field.key]?.length
-                  ? values[field.key]
+                  ? renderFieldValue(field, values[field.key])
                   : index === activeIndex
                     ? ""
                     : field.placeholder || "..."} 

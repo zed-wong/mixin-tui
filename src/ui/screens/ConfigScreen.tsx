@@ -60,6 +60,7 @@ export const ConfigSwitchScreen: React.FC<{
             key: "keystoreJson",
             label: "Keystore JSON",
             placeholder: "Paste JSON keystore",
+            type: "textarea",
           },
         ]}
         helpText="ENTER = NEXT/SAVE, ESC = BACK"
