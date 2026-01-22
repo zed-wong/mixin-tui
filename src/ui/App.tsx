@@ -35,6 +35,7 @@ type Route =
   | { id: "network-top-assets" }
   | { id: "safe-menu" }
   | { id: "safe-assets" }
+  | { id: "auth-token" }
   | { id: "messages-menu" }
   | { id: "messages-send-text" }
   | { id: "messages-stream" }
@@ -56,6 +57,20 @@ type Nav = {
   reset: (route: Route) => void;
 };
 
+const Spinner = () => {
+  const [frame, setFrame] = useState(0);
+  const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFrame((prev) => (prev + 1) % frames.length);
+    }, 80);
+    return () => clearInterval(timer);
+  }, []);
+
+  return <Text>{frames[frame]}</Text>;
+};
+
 const StatusBar: React.FC<{ status: StatusState; message: string }> = ({
   status,
   message,
@@ -75,6 +90,13 @@ const StatusBar: React.FC<{ status: StatusState; message: string }> = ({
       <Text color={color} bold>
         {status === "idle" ? "ready" : status}
       </Text>
+      {status === "loading" && (
+        <Box marginLeft={1}>
+          <Text color={THEME.warning}>
+            <Spinner />
+          </Text>
+        </Box>
+      )}
       <Text color={THEME.muted}> · </Text>
       <Text color={THEME.text}>{message}</Text>
     </Box>
@@ -225,6 +247,50 @@ const ConfigSwitchScreen: React.FC<{
       onSubmit={(values) => onSubmit(values.configPath ?? "")}
       onCancel={onCancel}
       inputEnabled={inputEnabled}
+    />
+  );
+};
+
+const AuthTokenScreen: React.FC<{
+  services: MixinServices | null;
+  nav: Nav;
+  setStatus: (state: StatusState, message: string) => void;
+  inputEnabled: boolean;
+}> = ({ services, nav, setStatus, inputEnabled }) => {
+  if (!services) {
+    return <Text color={THEME.muted}>Load a config to sign auth tokens.</Text>;
+  }
+
+  return (
+    <FormView
+      title="Sign Auth Token"
+      fields={[
+        { key: "method", label: "Method", placeholder: "GET", initialValue: "GET" },
+        { key: "uri", label: "URI", placeholder: "/me", initialValue: "/me" },
+        { key: "body", label: "Body", placeholder: "Optional JSON string" },
+        { key: "exp", label: "Expires", placeholder: "1h", initialValue: "1h" },
+      ]}
+      helpText="Exp: seconds or 10m/1h/10d"
+      onCancel={() => nav.pop()}
+      inputEnabled={inputEnabled}
+      onSubmit={(values) => {
+        if (!inputEnabled) return;
+        setStatus("loading", "Signing auth token...");
+        services.auth
+          .signAuthToken({
+            method: values.method,
+            uri: values.uri ?? "",
+            body: values.body,
+            exp: values.exp,
+          })
+          .then((result) => {
+            nav.push({ id: "result", title: "Auth Token", data: result });
+            setStatus("idle", "Ready");
+          })
+          .catch((error) => {
+            setStatus("error", error instanceof Error ? error.message : String(error));
+          });
+      }}
     />
   );
 };
@@ -1057,9 +1123,14 @@ export const App: React.FC = () => {
   const [message, setMessage] = useState("Initializing...");
   const [configPath, setConfigPath] = useState("default");
   const [commandsVisible, setCommandsVisible] = useState(false);
+  const [command, setCommand] = useState("");
   const [routeStack, setRouteStack] = useState<Route[]>([{ id: "home" }]);
 
   const currentRoute = routeStack[routeStack.length - 1];
+
+  useEffect(() => {
+    setCommand("");
+  }, [currentRoute.id]);
 
   const nav = useMemo<Nav>(
     () => ({
@@ -1137,6 +1208,21 @@ export const App: React.FC = () => {
     if (currentRoute.id === "home" && input === "q") {
       exit();
     }
+
+    if (!commandsVisible) {
+      if (key.backspace || key.delete) {
+        setCommand((prev) => prev.slice(0, -1));
+        return;
+      }
+      if (
+        !key.ctrl &&
+        !key.meta &&
+        input.length === 1 &&
+        /^[a-zA-Z0-9\s]$/.test(input)
+      ) {
+        setCommand((prev) => prev + input);
+      }
+    }
   });
 
   const helpText = "[Up/Down] Nav [Enter] Select [Esc] Back [Q] Quit [Ctrl+P] Cmds";
@@ -1150,6 +1236,7 @@ export const App: React.FC = () => {
           { label: "User", value: "user" },
           { label: "Network", value: "network" },
           { label: "Safe", value: "safe" },
+          { label: "Auth Token", value: "auth" },
           { label: "Messages", value: "messages" },
           { label: "Switch Config", value: "config" },
           { label: "Quit", value: "quit" },
@@ -1172,6 +1259,9 @@ export const App: React.FC = () => {
                   break;
                 case "safe":
                   nav.push({ id: "safe-menu" });
+                  break;
+                case "auth":
+                  nav.push({ id: "auth-token" });
                   break;
                 case "messages":
                   nav.push({ id: "messages-menu" });
@@ -1253,6 +1343,15 @@ export const App: React.FC = () => {
           />
         );
       }
+      case "auth-token":
+        return (
+          <AuthTokenScreen
+            services={services}
+            nav={nav}
+            setStatus={setStatusMessage}
+            inputEnabled={inputEnabled}
+          />
+        );
       case "transfer-to-user":
         return (
           <TransferToUserScreen
@@ -1455,7 +1554,7 @@ export const App: React.FC = () => {
 
       <StatusBar status={status} message={message} />
 
-      <InputSection configPath={configPath} />
+      <InputSection configPath={configPath} command={command} />
     </Box>
   );
 };
