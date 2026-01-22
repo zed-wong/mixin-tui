@@ -41,9 +41,9 @@ export const MenuList: React.FC<MenuListProps> = ({
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Box marginBottom={1}>
-        <Text bold underline color={THEME.text}>
-          {title}
+      <Box marginBottom={1} borderStyle="round" borderColor={THEME.border} paddingX={1}>
+        <Text bold color={THEME.primary}>
+          {title.toUpperCase()}
         </Text>
       </Box>
       {items.length === 0 ? (
@@ -51,19 +51,27 @@ export const MenuList: React.FC<MenuListProps> = ({
       ) : (
         windowedItems.items.map((item, index) => {
           const actualIndex = windowedItems.start + index;
+          const isSelected = actualIndex === selectedIndex;
           return (
-            <Box key={`${item.value}-${actualIndex}`} flexDirection="column">
-              <Text
-                color={
-                  actualIndex === selectedIndex ? THEME.secondary : THEME.muted
-                }
-              >
-                {actualIndex === selectedIndex ? "> " : "  "}
-                {item.icon ? `${item.icon} ` : ""}
-                {item.label}
-              </Text>
-              {item.description ? (
-                <Text color={THEME.muted}>  {item.description}</Text>
+            <Box key={`${item.value}-${actualIndex}`} flexDirection="column" marginBottom={0}>
+              <Box>
+                <Text color={isSelected ? THEME.secondary : THEME.muted}>
+                  {isSelected ? "› " : "  "}
+                </Text>
+                <Text
+                  color={isSelected ? THEME.text : THEME.muted}
+                  bold={isSelected}
+                  backgroundColor={isSelected ? THEME.highlight : undefined}
+                >
+                   {item.icon ? `${item.icon} ` : ""}{item.label} 
+                </Text>
+              </Box>
+              {item.description && isSelected ? (
+                <Box marginLeft={2}>
+                  <Text color={THEME.muted} dimColor>
+                    {item.description}
+                  </Text>
+                </Box>
               ) : null}
             </Box>
           );

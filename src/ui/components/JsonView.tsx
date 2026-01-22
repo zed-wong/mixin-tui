@@ -51,16 +51,18 @@ export const FormattedView: React.FC<FormattedViewProps> = ({ title, data }) => 
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Box marginBottom={1}>
-        <Text bold underline color={THEME.text}>
-          {title}
+      <Box marginBottom={1} borderStyle="round" borderColor={THEME.border} paddingX={1}>
+        <Text bold color={THEME.primary}>
+          {title.toUpperCase()}
         </Text>
       </Box>
-      {lines.map((line, index) => (
-        <Text key={`${index}-${line}`} color={THEME.text}>
-          {line}
-        </Text>
-      ))}
+      <Box borderStyle="single" borderColor={THEME.border} padding={1} flexDirection="column">
+        {lines.map((line, index) => (
+          <Text key={`${index}-${line}`} color={THEME.text}>
+            {line}
+          </Text>
+        ))}
+      </Box>
     </Box>
   );
 };

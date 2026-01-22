@@ -26,7 +26,6 @@ type Route =
   | { id: "wallet-assets" }
   | { id: "wallet-snapshots"; filters?: SnapshotFilters }
   | { id: "wallet-snapshot-filter"; filters?: SnapshotFilters }
-  | { id: "transfer-menu" }
   | { id: "transfer-to-user" }
   | { id: "transfer-refund" }
   | { id: "user-menu" }
@@ -71,11 +70,13 @@ const StatusBar: React.FC<{ status: StatusState; message: string }> = ({
           : THEME.primary;
 
   return (
-    <Box borderStyle="single" borderColor={THEME.muted} paddingX={1}>
-      <Text color={color} bold>
-        {status.toUpperCase()}
-      </Text>
-      <Spacer />
+    <Box borderStyle="single" borderColor={THEME.border} paddingX={1} justifyContent="space-between">
+      <Box>
+        <Text color={THEME.muted}>STATUS: </Text>
+        <Text color={color} bold>
+          {status.toUpperCase()}
+        </Text>
+      </Box>
       <Text color={THEME.text}>{message}</Text>
     </Box>
   );
@@ -83,7 +84,7 @@ const StatusBar: React.FC<{ status: StatusState; message: string }> = ({
 
 const Header: React.FC<{ configPath: string }> = ({ configPath }) => (
   <Box
-    borderStyle="double"
+    borderStyle="round"
     borderColor={THEME.primary}
     paddingX={2}
     justifyContent="space-between"
@@ -92,7 +93,7 @@ const Header: React.FC<{ configPath: string }> = ({ configPath }) => (
       <Text color={THEME.primary} bold>
         MIXIN
       </Text>
-      <Text color={THEME.secondary}>TUI</Text>
+      <Text color={THEME.secondary}> TUI</Text>
     </Box>
     <Box>
       <Text color={THEME.muted}>
@@ -103,18 +104,20 @@ const Header: React.FC<{ configPath: string }> = ({ configPath }) => (
 );
 
 const CommandsView: React.FC = () => (
-  <Box flexDirection="column" paddingX={1}>
+  <Box flexDirection="column" paddingX={1} borderStyle="single" borderColor={THEME.border} padding={1}>
     <Box marginBottom={1}>
-      <Text bold underline color={THEME.text}>
-        Commands and Shortcuts
+      <Text bold color={THEME.primary}>
+        COMMANDS
       </Text>
     </Box>
-    <Text color={THEME.muted}>/ Open commands (from Home)</Text>
-    <Text color={THEME.muted}>Ctrl+P Toggle commands</Text>
-    <Text color={THEME.muted}>Up/Down Navigate lists</Text>
-    <Text color={THEME.muted}>Enter Select or submit</Text>
-    <Text color={THEME.muted}>Esc Go back or cancel</Text>
-    <Text color={THEME.muted}>Q Quit (from Home)</Text>
+    <Box flexDirection="column">
+      <Box><Text color={THEME.secondary}>/</Text><Text color={THEME.muted}>        Open commands</Text></Box>
+      <Box><Text color={THEME.secondary}>Ctrl+P</Text><Text color={THEME.muted}>   Toggle commands</Text></Box>
+      <Box><Text color={THEME.secondary}>Up/Down</Text><Text color={THEME.muted}>  Navigate</Text></Box>
+      <Box><Text color={THEME.secondary}>Enter</Text><Text color={THEME.muted}>    Select/Submit</Text></Box>
+      <Box><Text color={THEME.secondary}>Esc</Text><Text color={THEME.muted}>      Back/Cancel</Text></Box>
+      <Box><Text color={THEME.secondary}>Q</Text><Text color={THEME.muted}>        Quit</Text></Box>
+    </Box>
   </Box>
 );
 
@@ -979,10 +982,12 @@ const MessagesStreamScreen: React.FC<{
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Box marginBottom={1} borderStyle="single" borderBottom={false} borderLeft={false} borderRight={false} borderColor={THEME.muted}>
-        <Text bold underline color={THEME.text}>
-          Message Stream (Esc to stop)
+      <Box marginBottom={1} borderStyle="round" borderColor={THEME.border} paddingX={1}>
+        <Text bold color={THEME.primary}>
+          MESSAGE STREAM
         </Text>
+        <Spacer />
+        <Text color={THEME.muted}>Esc to stop</Text>
       </Box>
       {messages.length === 0 ? (
         <Text color={THEME.muted}>Waiting for messages...</Text>
@@ -995,10 +1000,10 @@ const MessagesStreamScreen: React.FC<{
                 <Box>
                   <Text color={THEME.muted}>[{formatTime(msg.createdAt)}] </Text>
                   <Text color={THEME.primary} bold>
-                    {senderName}:{" "}
+                    {senderName}
                   </Text>
                 </Box>
-                <Box paddingLeft={2}>
+                <Box paddingLeft={1} borderStyle="single" borderTop={false} borderRight={false} borderBottom={false} borderColor={THEME.border}>
                   <Text color={THEME.text}>{msg.content}</Text>
                 </Box>
               </Box>
@@ -1113,7 +1118,6 @@ export const App: React.FC = () => {
       case "home": {
         const items: MenuItem[] = [
           { label: "Wallet", value: "wallet" },
-          { label: "Transfer", value: "transfer" },
           { label: "User", value: "user" },
           { label: "Network", value: "network" },
           { label: "Safe", value: "safe" },
@@ -1130,9 +1134,6 @@ export const App: React.FC = () => {
               switch (item.value) {
                 case "wallet":
                   nav.push({ id: "wallet-menu" });
-                  break;
-                case "transfer":
-                  nav.push({ id: "transfer-menu" });
                   break;
                 case "user":
                   nav.push({ id: "user-menu" });
@@ -1161,6 +1162,7 @@ export const App: React.FC = () => {
         const items: MenuItem[] = [
           { label: "Balances", value: "balances" },
           { label: "Snapshots", value: "snapshots" },
+          { label: "Transfer to User", value: "transfer" },
           { label: "Refund", value: "refund" },
           { label: "Back", value: "back" },
         ];
@@ -1177,6 +1179,9 @@ export const App: React.FC = () => {
                   break;
                 case "snapshots":
                   nav.push({ id: "wallet-snapshots" });
+                  break;
+                case "transfer":
+                  nav.push({ id: "transfer-to-user" });
                   break;
                 case "refund":
                   nav.push({ id: "transfer-refund" });
@@ -1216,34 +1221,6 @@ export const App: React.FC = () => {
             filters={currentRoute.filters}
             inputEnabled={inputEnabled}
             maxItems={listMaxItems}
-          />
-        );
-      }
-      case "transfer-menu": {
-        const items: MenuItem[] = [
-          { label: "Transfer to User", value: "to-user" },
-          { label: "Refund", value: "refund" },
-          { label: "Back", value: "back" },
-        ];
-        return (
-          <MenuScreen
-            title="Transfer"
-            items={items}
-            inputEnabled={inputEnabled}
-            onBack={() => nav.pop()}
-            onSelect={(item) => {
-              switch (item.value) {
-                case "to-user":
-                  nav.push({ id: "transfer-to-user" });
-                  break;
-                case "refund":
-                  nav.push({ id: "transfer-refund" });
-                  break;
-                case "back":
-                  nav.pop();
-                  break;
-              }
-            }}
           />
         );
       }
@@ -1433,18 +1410,20 @@ export const App: React.FC = () => {
       width={dimensions.columns}
       height={dimensions.rows}
       borderStyle="round"
-      borderColor={THEME.primary}
+      borderColor={THEME.border}
       padding={1}
     >
       <Header configPath={configPath} />
       <Spacer />
-      <Box minHeight={12} borderStyle="single" borderColor={THEME.muted} paddingY={1}>
+      <Box minHeight={12} paddingY={1}>
         {commandsVisible ? <CommandsView /> : renderScreen()}
       </Box>
       <Spacer />
       <StatusBar status={status} message={message} />
-      <Box marginTop={1} paddingX={1}>
-        <Text color={THEME.muted}>{helpText}</Text>
+      <Box marginTop={0} paddingX={1} justifyContent="center">
+        <Text color={THEME.muted} dimColor>
+          {helpText.replace(/\[/g, " ").replace(/\]/g, "")}
+        </Text>
       </Box>
     </Box>
   );

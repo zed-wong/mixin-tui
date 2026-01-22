@@ -92,36 +92,45 @@ export const FormView: React.FC<FormViewProps> = ({
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Box marginBottom={1}>
-        <Text bold underline color={THEME.text}>
-          {title}
+      <Box marginBottom={1} borderStyle="round" borderColor={THEME.border} paddingX={1}>
+        <Text bold color={THEME.primary}>
+          {title.toUpperCase()}
         </Text>
       </Box>
-      {fields.map((field, index) => (
-        <Box key={field.key} flexDirection="row">
-          <Box width={18}>
-            <Text
-              color={index === activeIndex ? THEME.secondary : THEME.muted}
-              bold={index === activeIndex}
-            >
-              {field.label}
-            </Text>
+      <Box flexDirection="column" borderStyle="single" borderColor={THEME.border} padding={1}>
+        {fields.map((field, index) => (
+          <Box key={field.key} flexDirection="row" marginBottom={1}>
+            <Box width={20}>
+              <Text
+                color={index === activeIndex ? THEME.secondary : THEME.muted}
+                bold={index === activeIndex}
+              >
+                {index === activeIndex ? "› " : "  "}
+                {field.label}
+              </Text>
+            </Box>
+            <Box>
+              <Text color={THEME.muted}>│ </Text>
+              <Text
+                color={index === activeIndex ? THEME.text : THEME.muted}
+                backgroundColor={index === activeIndex ? THEME.highlight : undefined}
+              >
+                 {values[field.key]?.length
+                  ? values[field.key]
+                  : index === activeIndex
+                    ? ""
+                    : field.placeholder || "..."} 
+              </Text>
+              {index === activeIndex && <Text color={THEME.secondary}>_</Text>}
+            </Box>
           </Box>
-          <Text color={THEME.muted}>: </Text>
-          <Text color={index === activeIndex ? THEME.text : THEME.muted}>
-            {values[field.key]?.length
-              ? values[field.key]
-              : index === activeIndex
-                ? ""
-                : field.placeholder}
-          </Text>
-          {index === activeIndex && <Text color={THEME.secondary}>_</Text>}
-        </Box>
-      ))}
-      <Newline />
-      <Text color={THEME.muted}>
-        {helpText || "Use Enter to move, Enter on last field to submit."}
-      </Text>
+        ))}
+      </Box>
+      <Box marginTop={1}>
+        <Text color={THEME.muted} dimColor>
+          {helpText || "Enter: Next/Submit • Esc: Cancel"}
+        </Text>
+      </Box>
     </Box>
   );
 };
