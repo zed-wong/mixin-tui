@@ -904,7 +904,7 @@ const MessagesStreamScreen: React.FC<{
 
   const formatTime = (iso: string) => {
     try {
-      return new Date(iso).toLocaleTimeString();
+      return new Date(iso).toLocaleString();
     } catch {
       return iso;
     }
