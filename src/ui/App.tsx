@@ -1577,8 +1577,6 @@ export const App: React.FC = () => {
       </Box>
 
       <StatusBar status={status} message={message} />
-
-      <InputSection configPath={configPath} command={command} />
     </Box>
   );
 };
