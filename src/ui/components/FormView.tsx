@@ -16,6 +16,7 @@ type FormViewProps = {
   onCancel: () => void;
   helpText?: string;
   inputEnabled?: boolean;
+  setCommandHints?: (hints: string) => void;
 };
 
 export const FormView: React.FC<FormViewProps> = ({
@@ -25,6 +26,7 @@ export const FormView: React.FC<FormViewProps> = ({
   onCancel,
   helpText,
   inputEnabled = true,
+  setCommandHints,
 }) => {
   const initialValues = useMemo(
     () =>
@@ -42,6 +44,12 @@ export const FormView: React.FC<FormViewProps> = ({
     setValues(initialValues);
     setActiveIndex(0);
   }, [initialValues]);
+
+  useEffect(() => {
+    if (setCommandHints) {
+      setCommandHints(helpText || "ENTER = NEXT/SUBMIT, ESC = CANCEL");
+    }
+  }, [setCommandHints, helpText]);
 
   useInput((input, key) => {
     if (!inputEnabled) return;
@@ -125,11 +133,6 @@ export const FormView: React.FC<FormViewProps> = ({
             </Box>
           </Box>
         ))}
-      </Box>
-      <Box marginTop={1}>
-        <Text color={THEME.muted} dimColor>
-          {helpText || "Enter: Next/Submit • Esc: Cancel"}
-        </Text>
       </Box>
     </Box>
   );
