@@ -809,7 +809,7 @@ const UserFetchScreen: React.FC<{
   return (
     <FormView
       title="Fetch User"
-      fields={[{ key: "userId", label: "User ID", placeholder: "UUID" }]}
+      fields={[{ key: "userId", label: "User/Mixin ID", placeholder: "UUID or Mixin ID" }]}
       onCancel={() => nav.pop()}
       inputEnabled={inputEnabled}
       onSubmit={(values) => {
