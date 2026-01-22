@@ -107,6 +107,13 @@ export const App: React.FC = () => {
     breadcrumb.length > 0 ? breadcrumb.join(" -> ") : null,
   ].filter(Boolean);
   const headerText = headerParts.join(" · ");
+  const statusHints = useMemo(() => {
+    if (currentRoute.id === "home") return commandHints;
+    const trimmed = commandHints.trim();
+    if (trimmed.length === 0) return "ESC = EXIT";
+    if (trimmed.toUpperCase().includes("ESC")) return trimmed;
+    return `${trimmed}, ESC = EXIT`;
+  }, [commandHints, currentRoute.id]);
 
   const nav = useMemo<Nav>(
     () => ({
@@ -607,7 +614,7 @@ export const App: React.FC = () => {
         {commandsVisible ? <CommandsView /> : renderScreen()}
       </Box>
 
-      <StatusBar status={status} message={message} commandHints={commandHints} />
+      <StatusBar status={status} message={message} commandHints={statusHints} />
     </Box>
   );
 };
