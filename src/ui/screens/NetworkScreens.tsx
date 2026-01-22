@@ -118,13 +118,13 @@ export const SafeAssetsScreen: React.FC<{
       .assets()
       .then((assets) => {
         setRaw(assets);
-        setItems(
-          assets.map((asset, index) => ({
-            label: `${asset.symbol ?? "?"}`,
-            value: asset.asset_id ?? String(index),
-            description: asset.name ?? "",
-          }))
-        );
+          setItems(
+            assets.map((asset, index) => ({
+              label: `${asset.symbol ?? "?"}  ${asset.price_usd ?? ""}`,
+              value: asset.asset_id ?? String(index),
+              description: `name: ${asset.name ?? "?"}  asset_id: ${asset.asset_id ?? "?"}  chain_id: ${asset.chain_id ?? "?"}`,
+            }))
+          );
         setStatus("idle", "Ready");
         setLoading(false);
         setHasLoaded(true);
@@ -175,6 +175,44 @@ export const SafeAssetsScreen: React.FC<{
   );
 };
 
+export const NetworkAssetFetchForm: React.FC<{
+  services: MixinServices | null;
+  nav: Nav;
+  setStatus: (state: StatusState, message: string) => void;
+  inputEnabled: boolean;
+  setCommandHints: (hints: string) => void;
+}> = ({ services, nav, setStatus, inputEnabled, setCommandHints }) => {
+  if (!services) {
+    return <Text color={THEME.muted}>Load a config to fetch network assets.</Text>;
+  }
+
+  return (
+    <FormView
+      title="Network Asset"
+      fields={[{ key: "assetId", label: "Asset ID", placeholder: "UUID" }]}
+      onCancel={() => nav.pop()}
+      inputEnabled={inputEnabled}
+      setCommandHints={setCommandHints}
+      onSubmit={(values) => {
+        if (!inputEnabled) return;
+        setStatus("loading", "Fetching network asset...");
+        services.network
+          .fetchAsset(values.assetId ?? "")
+          .then((asset) => {
+            nav.push({ id: "result", title: "Network Asset", data: asset });
+            setStatus("idle", "Ready");
+          })
+          .catch((error) => {
+            setStatus(
+              "error",
+              error instanceof Error ? error.message : String(error)
+            );
+          });
+      }}
+    />
+  );
+};
+
 export const NetworkAssetSearchScreen: React.FC<{
   services: MixinServices | null;
   nav: Nav;
@@ -208,7 +246,7 @@ export const NetworkAssetSearchScreen: React.FC<{
           assets.map((asset, index) => ({
             label: `${asset.symbol ?? "?"}  ${asset.price_usd ?? ""}`,
             value: asset.asset_id ?? String(index),
-            description: asset.name ?? "",
+            description: `name: ${asset.name ?? "?"}  asset_id: ${asset.asset_id ?? "?"}  chain_id: ${asset.chain_id ?? "?"}`,
           }))
         );
         setStatus("idle", "Ready");
