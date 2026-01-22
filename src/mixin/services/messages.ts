@@ -11,6 +11,17 @@ export const createMessagesService = (client: MixinClient) => ({
     }
     return client.message.sendText(userId.trim(), text.trim());
   },
-  startStream: (handler: BlazeHandler) => client.blaze.loop(handler),
+  startStream: (handler: BlazeHandler) => {
+    try {
+      client.blaze.loop(handler);
+    } catch (error) {
+      if (error instanceof Error && error.message === "Blaze is already running") {
+        client.blaze.stopLoop();
+        client.blaze.loop(handler);
+      } else {
+        throw error;
+      }
+    }
+  },
   stopStream: () => client.blaze.stopLoop(),
 });

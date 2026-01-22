@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Box, Text, Spacer, useApp, useInput, useStdout } from "ink";
 import imageToAscii from "image-to-ascii";
+import BigNumber from "bignumber.js";
 import type { AssetResponse, SafeAsset, SafeSnapshotsRequest } from "@mixin.dev/mixin-node-sdk";
 import { loadConfig } from "../mixin/config.js";
 import { createMixinClient } from "../mixin/client.js";
@@ -23,10 +24,8 @@ type Route =
   | { id: "home" }
   | { id: "wallet-menu" }
   | { id: "wallet-assets" }
-  | { id: "wallet-asset-detail-form" }
   | { id: "wallet-snapshots"; filters?: SnapshotFilters }
   | { id: "wallet-snapshot-filter"; filters?: SnapshotFilters }
-  | { id: "wallet-snapshot-detail-form" }
   | { id: "transfer-menu" }
   | { id: "transfer-to-user" }
   | { id: "transfer-refund" }
@@ -206,23 +205,38 @@ const WalletAssetsScreen: React.FC<{
   setStatus: (state: StatusState, message: string) => void;
   inputEnabled: boolean;
 }> = ({ services, nav, setStatus, inputEnabled }) => {
+  type WalletBalance = Awaited<
+    ReturnType<MixinServices["wallet"]["listBalances"]>
+  >[number];
   const [balances, setBalances] = useState<WalletBalance[]>([]);
   const [iconMap, setIconMap] = useState<Record<string, string>>({});
   const fetchingRef = useRef(new Set<string>());
+  const fetchRequestRef = useRef(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const cancelBalanceFetch = () => {
+    fetchRequestRef.current += 1;
+    setStatus("idle", "Ready");
+  };
 
   useEffect(() => {
     if (!services) return;
+    const requestId = (fetchRequestRef.current += 1);
     setStatus("loading", "Fetching balances...");
     services.wallet
       .listBalances()
       .then((data) => {
-        setBalances(data as WalletBalance[]);
+        if (requestId !== fetchRequestRef.current) return;
+        setBalances(data);
         setStatus("idle", "Ready");
       })
       .catch((error) => {
+        if (requestId !== fetchRequestRef.current) return;
         setStatus("error", error instanceof Error ? error.message : String(error));
       });
+    return () => {
+      fetchRequestRef.current += 1;
+    };
   }, [services, setStatus]);
 
   useEffect(() => {
@@ -233,24 +247,27 @@ const WalletAssetsScreen: React.FC<{
         !fetchingRef.current.has(row.assetId)
       ) {
         fetchingRef.current.add(row.assetId);
-        imageToAscii(
-          row.iconUrl,
-          { size: { height: 1 }, stringify: true } as any,
-          (err: unknown, converted: string) => {
-            if (!err && converted) {
-              setIconMap((prev) => ({ ...prev, [row.assetId]: converted.trim() }));
-            }
+        const options = {
+          size: { height: 1 },
+        } satisfies Parameters<typeof imageToAscii>[1];
+        imageToAscii(row.iconUrl, options, (err, converted) => {
+          fetchingRef.current.delete(row.assetId);
+          if (!err && converted) {
+            setIconMap((prev) => ({
+              ...prev,
+              [row.assetId]: converted.trim(),
+            }));
           }
-        );
+        });
       }
     });
-  }, [balances]);
+  }, [balances, iconMap]);
 
   const items = useMemo<MenuItem[]>(() => {
     return balances.map((row) => ({
-      label: `${row.symbol ?? row.assetId}  ${row.balance}`,
+      label: `${row.symbol ?? row.assetId}  ${new BigNumber(row.balance).toFixed()}`,
       value: row.assetId,
-      description: row.name ?? row.assetId,
+      description: "",
       icon: iconMap[row.assetId] || (row.symbol ? `[${row.symbol}]` : "[--]"),
     }));
   }, [balances, iconMap]);
@@ -258,6 +275,7 @@ const WalletAssetsScreen: React.FC<{
   useInput((input, key) => {
     if (!inputEnabled) return;
     if (key.escape) {
+      cancelBalanceFetch();
       nav.pop();
       return;
     }
@@ -390,9 +408,18 @@ const WalletSnapshotsScreen: React.FC<{
   setStatus: (state: StatusState, message: string) => void;
   filters?: SnapshotFilters;
   inputEnabled: boolean;
-}> = ({ services, nav, setStatus, filters, inputEnabled }) => {
+  maxItems?: number;
+}> = ({ services, nav, setStatus, filters, inputEnabled, maxItems }) => {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const fetchRequestRef = useRef(0);
+  const formatTimestamp = (value: string) => {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+    return parsed.toISOString().replace("T", " ").slice(0, 19);
+  };
 
   const request = useMemo<SafeSnapshotsRequest>(() => {
     const limit = Number.parseInt(filters?.limit ?? "20", 10);
@@ -407,30 +434,38 @@ const WalletSnapshotsScreen: React.FC<{
 
   const loadSnapshots = () => {
     if (!services) return;
+    const requestId = (fetchRequestRef.current += 1);
     setStatus("loading", "Fetching snapshots...");
-    services.wallet
-      .listSnapshots(request)
+    services.safe
+      .listSnapshotsWithAssets(request)
       .then((snapshots) => {
+        if (requestId !== fetchRequestRef.current) return;
         const mapped = snapshots.map((snapshot) => ({
-          label: `${snapshot.type}  ${snapshot.amount}`,
+          label: `${new BigNumber(snapshot.amount).toFixed()} ${snapshot.asset_symbol ?? snapshot.asset_id}`,
           value: snapshot.snapshot_id,
-          description: `${snapshot.created_at}  ${snapshot.asset_id}`,
+          description: `${formatTimestamp(snapshot.created_at)}  ${snapshot.type}`,
         }));
         setItems(mapped);
         setStatus("idle", "Ready");
       })
       .catch((error) => {
+        if (requestId !== fetchRequestRef.current) return;
         setStatus("error", error instanceof Error ? error.message : String(error));
       });
   };
 
   useEffect(() => {
     loadSnapshots();
+    return () => {
+      fetchRequestRef.current += 1;
+    };
   }, [services, request]);
 
   useInput((input, key) => {
     if (!inputEnabled) return;
     if (key.escape) {
+      fetchRequestRef.current += 1;
+      setStatus("idle", "Ready");
       nav.pop();
       return;
     }
@@ -454,8 +489,8 @@ const WalletSnapshotsScreen: React.FC<{
     }
     if (key.return && items[selectedIndex] && services) {
       setStatus("loading", "Loading snapshot detail...");
-      services.wallet
-        .snapshotDetail(items[selectedIndex].value)
+        services.safe
+          .snapshotDetail(items[selectedIndex].value)
         .then((snapshot) => {
           nav.push({ id: "result", title: "Snapshot Detail", data: snapshot });
           setStatus("idle", "Ready");
@@ -476,6 +511,7 @@ const WalletSnapshotsScreen: React.FC<{
       items={items}
       selectedIndex={selectedIndex}
       emptyMessage="No snapshots"
+      maxItems={maxItems}
     />
   );
 };
@@ -499,7 +535,7 @@ const WalletSnapshotDetailForm: React.FC<{
       onSubmit={(values) => {
         if (!inputEnabled) return;
         setStatus("loading", "Fetching snapshot detail...");
-        services.wallet
+        services.safe
           .snapshotDetail(values.snapshotId ?? "")
           .then((snapshot) => {
             nav.push({ id: "result", title: "Snapshot Detail", data: snapshot });
@@ -854,15 +890,71 @@ const MessagesStreamScreen: React.FC<{
   setStatus: (state: StatusState, message: string) => void;
   inputEnabled: boolean;
 }> = ({ services, nav, setStatus, inputEnabled }) => {
-  const [lines, setLines] = useState<string[]>([]);
+  type StreamMessage = {
+    id: string;
+    userId: string;
+    category: string;
+    content: string;
+    createdAt: string;
+  };
+
+  const [messages, setMessages] = useState<StreamMessage[]>([]);
+  const [userMap, setUserMap] = useState<Record<string, string>>({});
+  const fetchedUsers = useRef<Set<string>>(new Set());
+
+  const formatTime = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleTimeString();
+    } catch {
+      return iso;
+    }
+  };
 
   useEffect(() => {
     if (!services) return;
     setStatus("loading", "Connecting to message stream...");
+    
+    setMessages([]);
+    
     services.messages.startStream({
-      onMessage: (message) => {
-        const line = JSON.stringify(message);
-        setLines((prev) => [...prev, line].slice(-200));
+      onMessage: (message: any) => {
+        let content = "";
+        if (message.category === "PLAIN_TEXT") {
+          content = typeof message.data === "string" ? message.data : JSON.stringify(message.data);
+        } else if (message.category === "SYSTEM_ACCOUNT_SNAPSHOT") {
+             const data = message.data;
+             const amount = data.amount || "?";
+             const symbol = data.asset?.symbol || "Asset";
+             content = `Transfer: ${amount} ${symbol}`;
+        } else {
+          content = `[${message.category}]`;
+        }
+
+        const newMsg: StreamMessage = {
+          id: message.message_id,
+          userId: message.user_id,
+          category: message.category,
+          content: content,
+          createdAt: message.created_at,
+        };
+
+        setMessages((prev) => [...prev, newMsg].slice(-50));
+
+        if (!fetchedUsers.current.has(message.user_id)) {
+          fetchedUsers.current.add(message.user_id);
+          
+          services.user
+            .fetch(message.user_id)
+            .then((user) => {
+              setUserMap((prev) => ({
+                ...prev,
+                [user.user_id]: user.full_name,
+              }));
+            })
+            .catch(() => {
+              fetchedUsers.current.delete(message.user_id);
+            });
+        }
       },
     });
     setStatus("idle", "Listening for messages");
@@ -883,21 +975,36 @@ const MessagesStreamScreen: React.FC<{
     return <Text color={THEME.muted}>Load a config to stream messages.</Text>;
   }
 
+  const displayMessages = messages.slice(-15);
+
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Box marginBottom={1}>
+      <Box marginBottom={1} borderStyle="single" borderBottom={false} borderLeft={false} borderRight={false} borderColor={THEME.muted}>
         <Text bold underline color={THEME.text}>
           Message Stream (Esc to stop)
         </Text>
       </Box>
-      {lines.length === 0 ? (
+      {messages.length === 0 ? (
         <Text color={THEME.muted}>Waiting for messages...</Text>
       ) : (
-        lines.map((line, index) => (
-          <Text key={`${index}-${line}`} color={THEME.text}>
-            {line}
-          </Text>
-        ))
+        <Box flexDirection="column">
+          {displayMessages.map((msg) => {
+            const senderName = userMap[msg.userId] || msg.userId.slice(0, 8);
+            return (
+              <Box key={msg.id} flexDirection="column" marginBottom={1}>
+                <Box>
+                  <Text color={THEME.muted}>[{formatTime(msg.createdAt)}] </Text>
+                  <Text color={THEME.primary} bold>
+                    {senderName}:{" "}
+                  </Text>
+                </Box>
+                <Box paddingLeft={2}>
+                  <Text color={THEME.text}>{msg.content}</Text>
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
       )}
     </Box>
   );
@@ -1053,9 +1160,7 @@ export const App: React.FC = () => {
       case "wallet-menu": {
         const items: MenuItem[] = [
           { label: "Balances", value: "balances" },
-          { label: "Asset Detail", value: "asset-detail" },
           { label: "Snapshots", value: "snapshots" },
-          { label: "Snapshot Detail", value: "snapshot-detail" },
           { label: "Refund", value: "refund" },
           { label: "Back", value: "back" },
         ];
@@ -1070,14 +1175,8 @@ export const App: React.FC = () => {
                 case "balances":
                   nav.push({ id: "wallet-assets" });
                   break;
-                case "asset-detail":
-                  nav.push({ id: "wallet-asset-detail-form" });
-                  break;
                 case "snapshots":
                   nav.push({ id: "wallet-snapshots" });
-                  break;
-                case "snapshot-detail":
-                  nav.push({ id: "wallet-snapshot-detail-form" });
                   break;
                 case "refund":
                   nav.push({ id: "transfer-refund" });
@@ -1099,15 +1198,6 @@ export const App: React.FC = () => {
             inputEnabled={inputEnabled}
           />
         );
-      case "wallet-asset-detail-form":
-        return (
-          <WalletAssetDetailForm
-            services={services}
-            nav={nav}
-            setStatus={setStatusMessage}
-            inputEnabled={inputEnabled}
-          />
-        );
       case "wallet-snapshot-filter":
         return (
           <WalletSnapshotFilterForm
@@ -1116,7 +1206,8 @@ export const App: React.FC = () => {
             inputEnabled={inputEnabled}
           />
         );
-      case "wallet-snapshots":
+      case "wallet-snapshots": {
+        const listMaxItems = Math.max(3, Math.floor((dimensions.rows - 16) / 2));
         return (
           <WalletSnapshotsScreen
             services={services}
@@ -1124,17 +1215,10 @@ export const App: React.FC = () => {
             setStatus={setStatusMessage}
             filters={currentRoute.filters}
             inputEnabled={inputEnabled}
+            maxItems={listMaxItems}
           />
         );
-      case "wallet-snapshot-detail-form":
-        return (
-          <WalletSnapshotDetailForm
-            services={services}
-            nav={nav}
-            setStatus={setStatusMessage}
-            inputEnabled={inputEnabled}
-          />
-        );
+      }
       case "transfer-menu": {
         const items: MenuItem[] = [
           { label: "Transfer to User", value: "to-user" },
