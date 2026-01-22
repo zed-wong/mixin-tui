@@ -82,7 +82,7 @@ export const FormView: React.FC<FormViewProps> = ({
       return;
     }
 
-    if (!key.ctrl && !key.meta) {
+    if (!key.ctrl && !key.meta && /^[\x20-\x7E]$/.test(input)) {
       setValues((prev) => ({
         ...prev,
         [currentKey]: prev[currentKey] + input,
