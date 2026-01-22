@@ -1,8 +1,10 @@
 # Mixin TUI
 
-The TUI (terminal user interface) for mixin bot to run different actions like transfer asset, read balance, send messages and more. It's written in Typescript, and use @mixin.dev/mixin-node-sdk as basement. 
+![MIXIN-TUI](./MIXIN-TUI.png)
 
-Inspired by mixin-cli (https://github.com/fox-one/mixin-cli).
+The Terminal User Interface for mixin bot to run different actions like transfer asset, read balance, send messages and more. 
+
+Inspired by [mixin-cli](https://github.com/fox-one/mixin-cli). Written in Typescript, and use @mixin.dev/mixin-node-sdk as basement. 
 
 ## Usage
 
