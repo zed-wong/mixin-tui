@@ -13,6 +13,7 @@ import { MenuScreen } from "./screens/MenuScreen.js";
 import { MessagesSendTextScreen, MessagesStreamScreen } from "./screens/MessageScreens.js";
 import {
   NetworkAssetFetchForm,
+  NetworkAssetSearchScreen,
   NetworkAssetsScreen,
   SafeAssetsScreen,
 } from "./screens/NetworkScreens.js";
@@ -73,6 +74,8 @@ export const App: React.FC = () => {
         return "Network";
       case "network-top-assets":
         return "Top Assets";
+      case "network-asset-search":
+        return "Search Assets";
       case "network-asset-fetch":
         return "Fetch Asset";
       case "safe-menu":
@@ -386,6 +389,7 @@ export const App: React.FC = () => {
       case "network-menu": {
         const items: MenuItem[] = [
           { label: "Top Assets", value: "top" },
+          { label: "Search Assets", value: "search" },
           { label: "Fetch Asset", value: "fetch" },
           { label: "Safe Assets", value: "safe_assets" },
           { label: "Back", value: "back" },
@@ -399,6 +403,8 @@ export const App: React.FC = () => {
             onBack={() => nav.pop()}
             onSelect={(item) => {
               if (item.value === "top") nav.push({ id: "network-top-assets" });
+              if (item.value === "search")
+                nav.push({ id: "network-asset-search" });
               if (item.value === "fetch") nav.push({ id: "network-asset-fetch" });
               if (item.value === "safe_assets") nav.push({ id: "safe-assets" });
               if (item.value === "back") nav.pop();
@@ -410,6 +416,19 @@ export const App: React.FC = () => {
         const listMaxItems = Math.max(3, dimensions.rows - 10);
         return (
           <NetworkAssetsScreen
+            services={services}
+            nav={nav}
+            setStatus={setStatusMessage}
+            inputEnabled={inputEnabled}
+            maxItems={listMaxItems}
+            setCommandHints={setCommandHints}
+          />
+        );
+      }
+      case "network-asset-search": {
+        const listMaxItems = Math.max(3, dimensions.rows - 10);
+        return (
+          <NetworkAssetSearchScreen
             services={services}
             nav={nav}
             setStatus={setStatusMessage}
