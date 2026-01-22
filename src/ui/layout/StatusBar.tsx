@@ -59,7 +59,28 @@ export const StatusBar: React.FC<{
         </>
       )}
       <Spacer />
-      {commandHints && <Text color={THEME.muted}>{commandHints}</Text>}
+      {commandHints && (
+        <Text>
+          {commandHints.split(",").map((hint, i, arr) => {
+            const [key, action] = hint.includes("=")
+              ? hint.split("=")
+              : [hint, ""];
+            return (
+              <Text key={i}>
+                {action ? (
+                  <>
+                    <Text color={THEME.text}>{key?.trim()}</Text>
+                    <Text color={THEME.muted}> = {action.trim()}</Text>
+                  </>
+                ) : (
+                  <Text color={THEME.muted}>{key?.trim()}</Text>
+                )}
+                {i < arr.length - 1 && <Text color={THEME.muted}>, </Text>}
+              </Text>
+            );
+          })}
+        </Text>
+      )}
     </Box>
   );
 };
