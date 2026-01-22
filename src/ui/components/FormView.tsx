@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, Text, useInput, Newline } from "ink";
+import { Box, Text, useInput } from "ink";
 import { THEME } from "../theme.js";
 
 export type FormField = {
