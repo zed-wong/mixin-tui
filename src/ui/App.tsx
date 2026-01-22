@@ -27,7 +27,7 @@ type Route =
   | { id: "wallet-assets" }
   | { id: "wallet-snapshots"; filters?: SnapshotFilters }
   | { id: "wallet-snapshot-filter"; filters?: SnapshotFilters }
-  | { id: "transfer-to-user" }
+  | { id: "transfer-to-user"; assetId?: string }
   | { id: "transfer-refund" }
   | { id: "user-menu" }
   | { id: "user-profile" }
@@ -448,6 +448,10 @@ const WalletAssetsScreen: React.FC<{
       setSelectedIndex((index) => (index + 1) % items.length);
       return;
     }
+    if (input === "t" && items[selectedIndex]) {
+      nav.push({ id: "transfer-to-user", assetId: items[selectedIndex].value });
+      return;
+    }
     if (key.return && items[selectedIndex] && services) {
       setStatus("loading", "Loading asset detail...");
       services.wallet
@@ -467,7 +471,11 @@ const WalletAssetsScreen: React.FC<{
   }
 
   return (
-    <MenuList title="Wallet Balances" items={items} selectedIndex={selectedIndex} />
+    <MenuList
+      title="Wallet Balances (t = transfer)"
+      items={items}
+      selectedIndex={selectedIndex}
+    />
   );
 };
 
@@ -571,6 +579,7 @@ const WalletSnapshotsScreen: React.FC<{
 }> = ({ services, nav, setStatus, filters, inputEnabled, maxItems }) => {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
   const fetchRequestRef = useRef(0);
   const formatTimestamp = (value: string) => {
     const parsed = new Date(value);
@@ -594,6 +603,7 @@ const WalletSnapshotsScreen: React.FC<{
   const loadSnapshots = () => {
     if (!services) return;
     const requestId = (fetchRequestRef.current += 1);
+    setLoading(true);
     setStatus("loading", "Fetching snapshots...");
     services.safe
       .listSnapshotsWithAssets(request)
@@ -606,10 +616,12 @@ const WalletSnapshotsScreen: React.FC<{
         }));
         setItems(mapped);
         setStatus("idle", "Ready");
+        setLoading(false);
       })
       .catch((error) => {
         if (requestId !== fetchRequestRef.current) return;
         setStatus("error", error instanceof Error ? error.message : String(error));
+        setLoading(false);
       });
   };
 
@@ -664,6 +676,10 @@ const WalletSnapshotsScreen: React.FC<{
     return <Text color={THEME.muted}>Load a config to view snapshots.</Text>;
   }
 
+  if (loading && items.length === 0) {
+    return <Text color={THEME.muted}>Loading snapshots...</Text>;
+  }
+
   return (
     <MenuList
       title="Snapshots (f = filter, r = refresh)"
@@ -716,7 +732,8 @@ const TransferToUserScreen: React.FC<{
   nav: Nav;
   setStatus: (state: StatusState, message: string) => void;
   inputEnabled: boolean;
-}> = ({ services, nav, setStatus, inputEnabled }) => {
+  assetId?: string;
+}> = ({ services, nav, setStatus, inputEnabled, assetId }) => {
   if (!services) {
     return <Text color={THEME.muted}>Load a config to send transfers.</Text>;
   }
@@ -725,7 +742,12 @@ const TransferToUserScreen: React.FC<{
     <FormView
       title="Transfer to User"
       fields={[
-        { key: "assetId", label: "Asset ID", placeholder: "UUID" },
+        {
+          key: "assetId",
+          label: "Asset ID",
+          placeholder: "UUID",
+          initialValue: assetId ?? "",
+        },
         { key: "opponentId", label: "Opponent ID", placeholder: "UUID" },
         { key: "amount", label: "Amount", placeholder: "0.0" },
         { key: "memo", label: "Memo", placeholder: "Optional" },
@@ -1420,6 +1442,7 @@ export const App: React.FC = () => {
             nav={nav}
             setStatus={setStatusMessage}
             inputEnabled={inputEnabled}
+            assetId={currentRoute.assetId}
           />
         );
       case "transfer-refund":
