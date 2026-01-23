@@ -22,7 +22,7 @@ export const NetworkAssetsScreen: React.FC<{
   const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    setCommandHints("ARROWS -> Select, ENTER -> Detail, ESC -> Exit");
+    setCommandHints("▲ / ▼ -> Select, ENTER -> Detail, ESC -> Exit");
   }, [setCommandHints]);
 
   useEffect(() => {
@@ -106,7 +106,7 @@ export const SafeAssetsScreen: React.FC<{
   const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    setCommandHints("ARROWS -> Select, ENTER -> Detail, ESC -> Exit");
+    setCommandHints("▲ / ▼ -> Select, ENTER -> Detail, ESC -> Exit");
   }, [setCommandHints]);
 
   useEffect(() => {
@@ -230,7 +230,7 @@ export const NetworkAssetSearchScreen: React.FC<{
 
   useEffect(() => {
     if (keyword.length === 0) return;
-    setCommandHints("ARROWS = SELECT, ENTER = DETAIL, ESC = EXIT");
+    setCommandHints("▲ / ▼ -> Select, ENTER -> Detail, ESC -> Exit");
   }, [keyword, setCommandHints]);
 
   useEffect(() => {

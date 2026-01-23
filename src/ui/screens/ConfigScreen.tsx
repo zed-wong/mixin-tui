@@ -134,7 +134,7 @@ export const ConfigSwitchScreen: React.FC<{
             type: "textarea",
           },
         ]}
-        helpText="ENTER = NEXT/SAVE, ESC = BACK"
+        helpText="ENTER -> NEXT/SAVE, ESC -> BACK"
         onSubmit={async (values) => {
           if (!inputEnabled) return;
           setStatus("loading", "Saving bot config...");

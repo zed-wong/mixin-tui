@@ -26,9 +26,9 @@ export const ResultScreen: React.FC<{
 }) => {
   useEffect(() => {
     const hints = [
-      "ESC/ENTER -> Exit",
       onCopy ? "C -> Copy" : null,
       onRefund ? "R -> Refund" : null,
+      "ESC/ENTER -> Exit",
     ]
       .filter(Boolean)
       .join(", ");

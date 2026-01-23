@@ -22,7 +22,7 @@ const CATEGORIES: CommandCategory[] = [
     title: "NAVIGATION",
     color: THEME.infoLight,
     commands: [
-      { key: "Up/Down Arrows", description: "Move through menu items" },
+      { key: "▲ / ▼", description: "Move through menu items" },
       { key: "Enter", description: "Select item / Submit form" },
       { key: "Esc", description: "Go back / Cancel" },
     ],

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput, useStdout } from "ink";
 import { FormView } from "../components/FormView.js";
 import { saveStoredConfigFromJson } from "../../mixin/configStore.js";
 import { THEME } from "../theme.js";
@@ -12,12 +12,20 @@ type OnboardingSelection = {
 
 type OnboardingMode = "intro" | "help" | "add";
 
-// ASCII art logo for Mixin TUI
+// Full ASCII art logo for Mixin TUI
 const LOGO = [
-  "  ___  __  __  ____",
-  " / __)(  )(  )(    \\",
-  "( (__  )(__)(  ) D (",
-  " \\___)(______)(____/)",
+  " __  __ _      _       _____ _   _ ___ ",
+  "|  \\/  (_)__ _(_)_ _  |_   _| | | |_ _|",
+  "| |\\/| | / _` | | ' \\   | | | |_| || | ",
+  "|_|  |_|_\\__,_|_|_||_|  |_|  \\___/|___|",
+];
+
+// Compact ASCII logo for small screens
+const LOGO_SMALL = [
+    " __  _ _____ _   _ ___ ",
+  "|  \\/  |_   _| | | |_ _|",
+  "| |\\/|  | | | |_| || | ",
+  "|_|  |_| |_|  \\___/|___|",
 ];
 
 const FEATURES = [
@@ -64,6 +72,24 @@ export const OnboardingScreen: React.FC<{
 }) => {
   const [mode, setMode] = useState<OnboardingMode>("intro");
   const [animationFrame, setAnimationFrame] = useState(0);
+  const { stdout } = useStdout();
+  const [dimensions, setDimensions] = useState({
+    columns: stdout?.columns ?? 80,
+    rows: stdout?.rows ?? 24,
+  });
+
+  useEffect(() => {
+    if (!stdout) return;
+    const onResize = () => {
+      setDimensions({ columns: stdout.columns, rows: stdout.rows });
+    };
+    stdout.on("resize", onResize);
+    return () => {
+      stdout.off("resize", onResize);
+    };
+  }, [stdout]);
+
+  const isSmallScreen = dimensions.columns < 50 || dimensions.rows < 20;
 
   useEffect(() => {
     // Only animate on intro screen to avoid interfering with form input
@@ -78,13 +104,13 @@ export const OnboardingScreen: React.FC<{
   useEffect(() => {
     switch (mode) {
       case "intro":
-        setCommandHints("ENTER = Continue, H = Help, Q = Quit");
+        setCommandHints("ENTER -> Continue, Q -> Quit");
         break;
       case "help":
-        setCommandHints("ENTER = Add Bot, ESC = Back, Q = Quit");
+        setCommandHints("ENTER -> Add Bot, ESC -> Back, Q -> Quit");
         break;
       case "add":
-        setCommandHints("ENTER = SAVE & START, ESC = BACK");
+        setCommandHints("ENTER -> SAVE & START, ESC -> BACK");
         break;
     }
   }, [mode, setCommandHints]);
@@ -99,9 +125,6 @@ export const OnboardingScreen: React.FC<{
 
     if (mode === "intro") {
       if (key.return) {
-        setMode("help");
-      }
-      if (input === "h" || input === "H") {
         setMode("help");
       }
     }
@@ -162,37 +185,6 @@ export const OnboardingScreen: React.FC<{
   if (mode === "help") {
     return (
       <Box flexDirection="column" paddingX={1}>
-        {/* What is Mixin TUI section */}
-        <Box marginBottom={1}>
-          <Text bold color={THEME.primary}>
-            What is Mixin TUI?
-          </Text>
-        </Box>
-
-        <Box marginBottom={1} flexDirection="column">
-          <Text color={THEME.textDim}>
-            Mixin TUI is a terminal user interface for interacting with the
-            Mixin Network. It allows you to manage bots, wallets, assets, and
-            messages directly from your terminal.
-          </Text>
-        </Box>
-
-        {/* Key Features section */}
-        <Box marginBottom={1}>
-          <Text bold color={THEME.secondary}>
-            Key Features:
-          </Text>
-        </Box>
-
-        {FEATURES.map((feature) => (
-          <Box key={feature.label} marginBottom={1} paddingLeft={1}>
-            <Text color={THEME.primaryLight}>
-              {feature.icon}{" "}
-            </Text>
-            <Text color={THEME.text}>{feature.label}</Text>
-          </Box>
-        ))}
-
         {/* Setup Steps section */}
         <Box marginTop={1} marginBottom={1}>
           <Text bold color={THEME.secondary}>
@@ -243,10 +235,12 @@ export const OnboardingScreen: React.FC<{
   }
 
   // Intro screen (mode === "intro")
+  const logoToShow = isSmallScreen ? LOGO_SMALL : LOGO;
+
   return (
     <Box flexDirection="column" paddingX={1}>
       <Box marginBottom={1} flexDirection="column">
-        {LOGO.map((line, idx) => (
+        {logoToShow.map((line, idx) => (
           <Box key={idx}>
             <Text bold color={
               idx === 0 ? THEME.primaryLight :
@@ -263,7 +257,7 @@ export const OnboardingScreen: React.FC<{
       <Box marginBottom={1}>
         <Text bold color={THEME.text}>
           Welcome to Mixin TUI
-          {".".repeat(Math.floor((animationFrame + 1) / 2))}
+          {".".repeat(Math.floor((animationFrame + 3) / 2))}
         </Text>
       </Box>
 
@@ -293,7 +287,7 @@ export const OnboardingScreen: React.FC<{
       <Box marginTop={1}>
         <Text color={THEME.muted} dimColor>
           Press <Text bold>ENTER</Text> to continue,{" "}
-          <Text bold>H</Text> for help, <Text bold>Q</Text> to quit
+          <Text bold>Q</Text> to quit
         </Text>
       </Box>
     </Box>
