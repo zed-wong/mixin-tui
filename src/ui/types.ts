@@ -9,6 +9,7 @@ export type SnapshotFilters = {
 
 export type Route =
   | { id: "home" }
+  | { id: "onboarding" }
   | { id: "wallet-menu" }
   | { id: "wallet-assets" }
   | { id: "wallet-snapshots"; filters?: SnapshotFilters }

@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import path from "node:path";
 
 export type MixinConfig = {
   app_id: string;
@@ -16,15 +15,6 @@ const requiredKeys: Array<keyof MixinConfig> = [
   "server_public_key",
   "session_private_key",
 ];
-
-const resolveConfigPath = (override?: string) => {
-  if (override) {
-    return path.resolve(override);
-  }
-  return process.env.MIXIN_CONFIG
-    ? path.resolve(process.env.MIXIN_CONFIG)
-    : path.resolve(process.cwd(), "mixin-config.json");
-};
 
 export const parseConfig = (raw: string, source?: string): MixinConfig => {
   let parsed: Partial<MixinConfig>;
@@ -47,8 +37,7 @@ export const parseConfig = (raw: string, source?: string): MixinConfig => {
   } as MixinConfig;
 };
 
-export const loadConfig = async (overridePath?: string): Promise<MixinConfig> => {
-  const configPath = resolveConfigPath(overridePath);
+export const loadConfig = async (configPath: string): Promise<MixinConfig> => {
   const raw = await readFile(configPath, "utf-8");
   return parseConfig(raw, configPath);
 };

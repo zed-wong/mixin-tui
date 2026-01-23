@@ -1,7 +1,7 @@
-import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { loadConfig, parseConfig } from "./config.js";
+import { loadConfig, parseConfig, type MixinConfig } from "./config.js";
 
 export type StoredConfigEntry = {
   label: string;
@@ -93,4 +93,19 @@ export const removeStoredConfig = async (label: string) => {
   const targetPath = path.join(CONFIG_DIR, `${safeLabel}.json`);
   await unlink(targetPath);
   return { label: safeLabel, path: targetPath };
+};
+
+export const loadStoredConfigByLabel = async (label: string): Promise<{
+  config: MixinConfig;
+  path: string;
+}> => {
+  const safeLabel = sanitizeLabel(label);
+  if (!safeLabel) {
+    throw new Error("Bot ID is required.");
+  }
+  await ensureConfigDir();
+  const targetPath = path.join(CONFIG_DIR, `${safeLabel}.json`);
+  const raw = await readFile(targetPath, "utf-8");
+  const config = parseConfig(raw, targetPath);
+  return { config, path: targetPath };
 };

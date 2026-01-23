@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput, useStdout } from "ink";
 import { type MenuItem } from "../components/MenuList.js";
 import { ALL_GRADIENTS, GRADIENTS, THEME } from "../theme.js";
 
@@ -18,8 +18,26 @@ export const HomeScreen: React.FC<{
   inputEnabled: boolean;
   setCommandHints: (hints: string) => void;
 }> = ({ items, onSelect, inputEnabled, setCommandHints }) => {
+  const { stdout } = useStdout();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [pulseFrame, setPulseFrame] = useState(0);
+  const [dimensions, setDimensions] = useState({
+    columns: stdout.columns,
+    rows: stdout.rows,
+  });
+
+  useEffect(() => {
+    const onResize = () => {
+      setDimensions({
+        columns: stdout.columns,
+        rows: stdout.rows,
+      });
+    };
+    stdout.on("resize", onResize);
+    return () => {
+      stdout.off("resize", onResize);
+    };
+  }, [stdout]);
 
   useEffect(() => {
     setCommandHints("ARROWS -> Choose, ENTER -> Open, Q -> Quit, / -> Commands");
@@ -59,17 +77,27 @@ export const HomeScreen: React.FC<{
     return ALL_GRADIENTS[offset];
   };
 
+  const isSmallScreen = dimensions.columns < 65 || dimensions.rows < 25;
+
   return (
     <Box flexDirection="column" alignItems="center" justifyContent="center" flexGrow={1}>
-      <Box flexDirection="column" marginBottom={2} alignItems="center">
-        {HOME_LOGO.map((line, i) => (
-          <Text key={i} color={getLogoColor(i)} bold>
-            {line}
-          </Text>
-        ))}
+      <Box flexDirection="column" marginBottom={isSmallScreen ? 1 : 2} alignItems="center">
+        {!isSmallScreen ? (
+          HOME_LOGO.map((line, i) => (
+            <Text key={i} color={getLogoColor(i)} bold>
+              {line}
+            </Text>
+          ))
+        ) : (
+          <Box flexDirection="column" alignItems="center" marginBottom={1}>
+            <Text color={THEME.primary} bold>MIXIN TUI</Text>
+          </Box>
+        )}
         <Box marginTop={1}>
           <Text color={THEME.muted}>
-            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            {isSmallScreen 
+              ? "━━━━━━━━━━━━━━━━━━━━━━━━" 
+              : "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"}
           </Text>
         </Box>
         <Box marginTop={1}>
@@ -83,9 +111,9 @@ export const HomeScreen: React.FC<{
         flexDirection="column"
         borderStyle="double"
         borderColor={THEME.primary}
-        paddingX={3}
+        paddingX={isSmallScreen ? 1 : 3}
         paddingY={1}
-        width={46}
+        width={isSmallScreen ? Math.min(46, dimensions.columns - 2) : 46}
       >
         {items.map((item, index) => {
           const isSelected = selectedIndex === index;

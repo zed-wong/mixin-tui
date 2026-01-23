@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Box, Text, useApp, useInput, useStdout } from "ink";
-import { loadConfig } from "../mixin/config.js";
 import { createMixinClient } from "../mixin/client.js";
+import { listStoredConfigs, loadStoredConfigByLabel } from "../mixin/configStore.js";
 import { createServices, type MixinServices } from "../mixin/services/index.js";
 import { type MenuItem } from "./components/MenuList.js";
 import { CommandsView } from "./layout/CommandsView.js";
 import { StatusBar } from "./layout/StatusBar.js";
+import { OnboardingScreen } from "./screens/OnboardingScreen.js";
 import { AuthTokenScreen } from "./screens/AuthScreen.js";
 import { ConfigSwitchScreen } from "./screens/ConfigScreen.js";
 import { HomeScreen } from "./screens/HomeScreen.js";
@@ -40,18 +41,20 @@ export const App: React.FC = () => {
   });
 
   const [services, setServices] = useState<MixinServices | null>(null);
-  const [status, setStatus] = useState<StatusState>("loading");
-  const [message, setMessage] = useState("Initializing...");
+  const [status, setStatus] = useState<StatusState>("idle");
+  const [message, setMessage] = useState("Select a bot to get started");
   const [commandHints, setCommandHints] = useState("");
-  const [configPath, setConfigPath] = useState("default");
+  const [configPath, setConfigPath] = useState("");
   const [commandsVisible, setCommandsVisible] = useState(false);
-  const [routeStack, setRouteStack] = useState<Route[]>([{ id: "home" }]);
+  const [routeStack, setRouteStack] = useState<Route[]>([{ id: "config-switch" }]);
 
   const currentRoute = routeStack[routeStack.length - 1];
   const formatRouteLabel = (route: Route) => {
     switch (route.id) {
       case "home":
         return null;
+      case "onboarding":
+        return "Setup";
       case "wallet-menu":
         return "Wallet";
       case "wallet-assets":
@@ -137,13 +140,13 @@ export const App: React.FC = () => {
     []
   );
 
-  const loadConfiguration = async (path?: string, label?: string) => {
-    setStatusMessage("loading", `Loading config from ${label || path || "default"}...`);
+  const loadConfiguration = async (label: string) => {
+    setStatusMessage("loading", `Loading config for ${label}...`);
     try {
-      const config = await loadConfig(path);
+      const { config } = await loadStoredConfigByLabel(label);
       const client = createMixinClient(config);
       setServices(createServices(client, config));
-      setConfigPath(label || path || "default");
+      setConfigPath(label);
       setStatusMessage("idle", "Ready");
     } catch (error) {
       setServices(null);
@@ -166,7 +169,15 @@ export const App: React.FC = () => {
   }, [stdout]);
 
   useEffect(() => {
-    loadConfiguration();
+    const checkInitialRoute = async () => {
+      const configs = await listStoredConfigs();
+      if (configs.length === 0) {
+        setRouteStack([{ id: "onboarding" }]);
+      } else {
+        setRouteStack([{ id: "config-switch" }]);
+      }
+    };
+    void checkInitialRoute();
   }, []);
 
   useInput((input, key) => {
@@ -506,6 +517,19 @@ export const App: React.FC = () => {
             setCommandHints={setCommandHints}
           />
         );
+      case "onboarding":
+        return (
+          <OnboardingScreen
+            inputEnabled={inputEnabled}
+            setStatus={setStatusMessage}
+            setCommandHints={setCommandHints}
+            onQuit={() => exit()}
+            onComplete={async ({ label }) => {
+              await loadConfiguration(label);
+              nav.reset({ id: "home" });
+            }}
+          />
+        );
       case "config-switch":
         return (
           <ConfigSwitchScreen
@@ -513,8 +537,8 @@ export const App: React.FC = () => {
             onCancel={() => nav.pop()}
             setStatus={setStatusMessage}
             setCommandHints={setCommandHints}
-            onSelect={async ({ path, label }) => {
-              await loadConfiguration(path, label);
+            onSelect={async ({ label }) => {
+              await loadConfiguration(label);
               nav.reset({ id: "home" });
             }}
           />
