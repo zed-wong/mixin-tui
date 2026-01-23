@@ -18,6 +18,7 @@ import {
   NetworkAssetsScreen,
   SafeAssetsScreen,
 } from "./screens/NetworkScreens.js";
+import { ConfirmView } from "./components/ConfirmView.js";
 import { ResultScreen } from "./screens/ResultScreen.js";
 import { UserFetchScreen, UserProfileScreen } from "./screens/UserScreens.js";
 import {
@@ -67,6 +68,8 @@ export const App: React.FC = () => {
         return "Transfer to User";
       case "transfer-refund":
         return "Refund";
+      case "refund-confirm":
+        return "Confirm Refund";
       case "user-menu":
         return "User";
       case "user-profile":
@@ -354,6 +357,47 @@ export const App: React.FC = () => {
             setCommandHints={setCommandHints}
           />
         );
+      case "refund-confirm": {
+        const snapshotData = currentRoute.snapshotData;
+        const details = snapshotData
+          ? Object.entries(snapshotData).map(([key, value]) => `${key}: ${value}`)
+          : [];
+        return (
+          <ConfirmView
+            title="Confirm Refund"
+            message="Are you sure you want to refund this transfer?"
+            details={details}
+            onConfirm={() => {
+              if (!services) return;
+              setStatusMessage("loading", "Refunding transfer...");
+              services.transfer
+                .refundSnapshot(currentRoute.refundSnapshotId)
+                .then((result) => {
+                  const entry = Array.isArray(result) ? result[0] : result;
+                  const summaryLines = entry
+                    ? buildTxSummary(entry as unknown as Record<string, unknown>)
+                    : undefined;
+                  nav.push({
+                    id: "result",
+                    title: "Refund Result",
+                    data: result,
+                    summaryLines,
+                  });
+                  setStatusMessage("idle", "Ready");
+                })
+                .catch((error) => {
+                  setStatusMessage(
+                    "error",
+                    error instanceof Error ? error.message : String(error)
+                  );
+                });
+            }}
+            onCancel={() => nav.pop()}
+            inputEnabled={inputEnabled}
+            setCommandHints={setCommandHints}
+          />
+        );
+      }
       case "user-menu": {
         const items: MenuItem[] = [
           { label: "My Profile", value: "profile" },
@@ -560,62 +604,45 @@ export const App: React.FC = () => {
         const onRefund =
           refundEnabled && services
             ? () => {
-                setStatusMessage("loading", "Refunding transfer...");
-                services.transfer
-                  .refundSnapshot(refundSnapshotId)
-                  .then((result) => {
-                    const entry = Array.isArray(result) ? result[0] : result;
-                    const summaryLines = entry
-                      ? buildTxSummary(entry as unknown as Record<string, unknown>)
-                      : undefined;
-                    nav.push({
-                      id: "result",
-                      title: "Refund Result",
-                      data: result,
-                      summaryLines,
-                    });
-                    setStatusMessage("idle", "Ready");
-                  })
-                  .catch((error) => {
-                    setStatusMessage(
-                      "error",
-                      error instanceof Error ? error.message : String(error)
-                    );
-                  });
-              }
+              nav.push({
+                id: "refund-confirm",
+                refundSnapshotId,
+                snapshotData: currentRoute.data as Record<string, unknown>,
+              });
+            }
             : undefined;
         return (
-            <ResultScreen
-              title={currentRoute.title}
-              data={currentRoute.data}
-              onBack={() => nav.pop()}
-              setCommandHints={setCommandHints}
-              onCopy={
-                copyText
-                  ? () => {
-                      setStatusMessage("loading", "Copying token...");
-                      void copyToClipboard(copyText)
-                        .then((copied) => {
-                          if (copied) {
-                            setStatusMessage("success", "Auth token copied.");
-                          } else {
-                            setStatusMessage("error", "Clipboard command not available.");
-                          }
-                        })
-                        .catch((error) => {
-                          setStatusMessage(
-                            "error",
-                            error instanceof Error ? error.message : String(error)
-                          );
-                        });
-                    }
-                  : undefined
-              }
-              inputEnabled={inputEnabled}
-              maxItems={resultMaxItems}
-              summaryLines={currentRoute.summaryLines}
-              onRefund={onRefund}
-            />
+          <ResultScreen
+            title={currentRoute.title}
+            data={currentRoute.data}
+            onBack={() => nav.pop()}
+            setCommandHints={setCommandHints}
+            onCopy={
+              copyText
+                ? () => {
+                  setStatusMessage("loading", "Copying token...");
+                  void copyToClipboard(copyText)
+                    .then((copied) => {
+                      if (copied) {
+                        setStatusMessage("success", "Auth token copied.");
+                      } else {
+                        setStatusMessage("error", "Clipboard command not available.");
+                      }
+                    })
+                    .catch((error) => {
+                      setStatusMessage(
+                        "error",
+                        error instanceof Error ? error.message : String(error)
+                      );
+                    });
+                }
+                : undefined
+            }
+            inputEnabled={inputEnabled}
+            maxItems={resultMaxItems}
+            summaryLines={currentRoute.summaryLines}
+            onRefund={onRefund}
+          />
         );
     }
   };

@@ -16,6 +16,7 @@ export type Route =
   | { id: "wallet-snapshot-filter"; filters?: SnapshotFilters }
   | { id: "transfer-to-user"; assetId?: string }
   | { id: "transfer-refund" }
+  | { id: "refund-confirm"; refundSnapshotId: string; snapshotData: Record<string, unknown> }
   | { id: "user-menu" }
   | { id: "user-profile" }
   | { id: "user-fetch" }
@@ -31,13 +32,13 @@ export type Route =
   | { id: "messages-stream" }
   | { id: "config-switch" }
   | {
-      id: "result";
-      title: string;
-      data: unknown;
-      copyText?: string;
-      summaryLines?: string[];
-      refundSnapshotId?: string;
-    };
+    id: "result";
+    title: string;
+    data: unknown;
+    copyText?: string;
+    summaryLines?: string[];
+    refundSnapshotId?: string;
+  };
 
 export type Nav = {
   push: (route: Route) => void;
