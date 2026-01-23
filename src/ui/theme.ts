@@ -35,6 +35,12 @@ export const GRADIENTS = {
   forest: ["#047857", "#059669", "#10b981", "#34d399"],
 } as const;
 
+// Combined palette for multi-gradient cycling effects (cyan + ocean only)
+export const ALL_GRADIENTS = [
+  ...GRADIENTS.cyan,
+  ...GRADIENTS.ocean,
+] as const;
+
 // Border style presets
 export const BORDER_STYLES = {
   none: undefined,

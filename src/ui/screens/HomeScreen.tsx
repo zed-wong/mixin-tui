@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { type MenuItem } from "../components/MenuList.js";
-import { GRADIENTS, THEME } from "../theme.js";
+import { ALL_GRADIENTS, GRADIENTS, THEME } from "../theme.js";
 
 const HOME_LOGO = [
   "███╗   ███╗██╗██╗  ██╗██╗███╗   ██╗      ████████╗██╗   ██╗██╗",
@@ -29,11 +29,11 @@ export const HomeScreen: React.FC<{
     setSelectedIndex(0);
   }, [items]);
 
-  // Subtle pulse animation for the logo
+  // Bottom-to-top color cycle animation
   useEffect(() => {
     const interval = setInterval(() => {
-      setPulseFrame((f) => (f + 1) % 4);
-    }, 500);
+      setPulseFrame((f) => (f + 1) % ALL_GRADIENTS.length);
+    }, 800);
     return () => clearInterval(interval);
   }, []);
 
@@ -54,9 +54,9 @@ export const HomeScreen: React.FC<{
   });
 
   const getLogoColor = (lineIndex: number): string => {
-    const gradient = GRADIENTS.cyan;
-    const offset = (lineIndex + pulseFrame) % gradient.length;
-    return gradient[offset];
+    // Multi-palette cycle from bottom to top
+    const offset = ((HOME_LOGO.length - 1 - lineIndex) + pulseFrame) % ALL_GRADIENTS.length;
+    return ALL_GRADIENTS[offset];
   };
 
   return (
