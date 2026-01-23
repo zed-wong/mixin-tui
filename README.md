@@ -8,9 +8,7 @@ Inspired by [mixin-cli](https://github.com/fox-one/mixin-cli). Written in Typesc
 
 ## Usage
 
-### Run via npx or bunx (Recommended)
-
-You can run the TUI directly without cloning the repository:
+### Run via npx
 
 ```bash
 npx mixin-tui
