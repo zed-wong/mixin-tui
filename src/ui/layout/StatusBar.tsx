@@ -5,12 +5,12 @@ import type { StatusState } from "../types.js";
 
 const Spinner = () => {
   const [frame, setFrame] = useState(0);
-  const frames = ["-", "\\", "|", "/"];
+  const frames = ["◜", "◠", "◝", "◞", "◡", "◟"];
 
   useEffect(() => {
     const timer = setInterval(() => {
       setFrame((prev) => (prev + 1) % frames.length);
-    }, 80);
+    }, 100);
     return () => clearInterval(timer);
   }, []);
 
@@ -24,12 +24,12 @@ export const StatusBar: React.FC<{
 }> = ({ status, message, commandHints }) => {
   const color =
     status === "error"
-      ? THEME.error
+      ? THEME.errorLight
       : status === "success"
-        ? THEME.success
+        ? THEME.successLight
         : status === "loading"
-          ? THEME.warning
-          : THEME.primary;
+          ? THEME.warningLight
+          : THEME.primaryLight;
 
   const showMessage =
     message && !(status === "idle" && message.toLowerCase() === "ready");
@@ -47,7 +47,7 @@ export const StatusBar: React.FC<{
       )}
       {status === "loading" && (
         <Box marginLeft={1}>
-          <Text color={THEME.warning}>
+          <Text color={THEME.warningLight}>
             <Spinner />
           </Text>
         </Box>
@@ -62,15 +62,16 @@ export const StatusBar: React.FC<{
       {commandHints && (
         <Text>
           {commandHints.split(",").map((hint, i, arr) => {
-            const [key, action] = hint.includes("=")
-              ? hint.split("=")
+            const separator = hint.includes("->") ? "->" : hint.includes("=") ? "=" : null;
+            const [key, action] = separator
+              ? hint.split(separator)
               : [hint, ""];
             return (
               <Text key={i}>
                 {action ? (
                   <>
-                    <Text color={THEME.text}>{key?.trim()}</Text>
-                    <Text color={THEME.muted}> = {action.trim()}</Text>
+                    <Text color={THEME.text} bold>{key?.trim()}</Text>
+                    <Text color={THEME.muted}> {separator} {action.trim()}</Text>
                   </>
                 ) : (
                   <Text color={THEME.muted}>{key?.trim()}</Text>

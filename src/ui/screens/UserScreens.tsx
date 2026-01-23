@@ -16,7 +16,7 @@ export const UserProfileScreen: React.FC<{
   const [data, setData] = useState<unknown | null>(null);
 
   useEffect(() => {
-    setCommandHints("ESC/ENTER = EXIT");
+    setCommandHints("ESC/ENTER -> Exit");
   }, [setCommandHints]);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export const UserProfileScreen: React.FC<{
     return <Text color={THEME.muted}>Loading profile...</Text>;
   }
 
-  return <FormattedView title="My Profile" data={data} />;
+  return <FormattedView title="My Profile" data={data} inputEnabled={inputEnabled} />;
 };
 
 export const UserFetchScreen: React.FC<{

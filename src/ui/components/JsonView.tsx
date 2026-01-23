@@ -82,26 +82,57 @@ export const FormattedView: React.FC<FormattedViewProps> = ({
 
   const visibleLines = lines.slice(offset, offset + maxItems);
   const progress = Math.min(100, Math.round(((offset + visibleLines.length) / lines.length) * 100));
+  const hasMorePages = lines.length > maxItems;
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Box marginBottom={1} borderStyle="round" borderColor={THEME.border} paddingX={1} justifyContent="space-between">
-        <Text bold color={THEME.primary}>
+      <Box
+        marginBottom={1}
+        borderStyle="round"
+        borderColor={THEME.border}
+        paddingX={1}
+        justifyContent="space-between"
+      >
+        <Text bold color={THEME.primaryLight}>
           {title.toUpperCase()}
         </Text>
-        {lines.length > maxItems && (
+        {hasMorePages && (
           <Text color={THEME.muted}>
             {offset + 1}-{Math.min(offset + maxItems, lines.length)} of {lines.length} ({progress}%)
           </Text>
         )}
       </Box>
-      <Box borderStyle="single" borderColor={THEME.border} padding={1} flexDirection="column">
-        {visibleLines.map((line, index) => (
-          <Text key={`${offset + index}-${line.slice(0, 20)}`} color={THEME.text}>
-            {line}
-          </Text>
-        ))}
+
+      <Box
+        borderStyle="single"
+        borderColor={THEME.border}
+        paddingX={1}
+        paddingY={1}
+        flexDirection="column"
+      >
+        {visibleLines.length === 0 ? (
+          <Box justifyContent="center" paddingY={2}>
+            <Text color={THEME.mutedDim}>No data available</Text>
+          </Box>
+        ) : (
+          visibleLines.map((line, index) => (
+            <Box key={`${offset + index}-${line.slice(0, 20)}`} marginBottom={0}>
+              <Text color={THEME.textDim}>{line}</Text>
+            </Box>
+          ))
+        )}
       </Box>
+
+      {/* Scroll indicator */}
+      {hasMorePages && (
+        <Box marginTop={1} justifyContent="center">
+          <Text color={THEME.mutedDim}>
+            {offset === 0 ? "▼" : offset + maxItems >= lines.length ? "▲" : "▲ ▼"}
+            <Text color={THEME.mutedDim}> Scroll with arrow keys </Text>
+            {offset === 0 ? "▼" : offset + maxItems >= lines.length ? "▲" : "▲ ▼"}
+          </Text>
+        </Box>
+      )}
     </Box>
   );
 };

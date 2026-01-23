@@ -32,7 +32,7 @@ export const WalletAssetsScreen: React.FC<{
   const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    setCommandHints("T = TRANSFER, ARROWS = SELECT, ENTER = DETAIL, ESC = EXIT");
+    setCommandHints("T -> Transfer, ARROWS -> Select, ENTER -> Detail, ESC -> Exit");
   }, [setCommandHints]);
 
   const cancelBalanceFetch = () => {
@@ -261,7 +261,7 @@ export const WalletSnapshotsScreen: React.FC<{
 
   useEffect(() => {
     setCommandHints(
-      "F = FILTER, R = REFRESH, ARROWS = SELECT, ENTER = DETAIL, ESC = EXIT"
+      "F -> Filter, R -> Refresh, ARROWS -> Select, ENTER -> Detail, ESC -> Exit"
     );
   }, [setCommandHints]);
 

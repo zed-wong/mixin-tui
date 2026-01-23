@@ -41,29 +41,45 @@ export const MenuList: React.FC<MenuListProps> = ({
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Box marginBottom={1} borderStyle="round" borderColor={THEME.border} paddingX={1}>
-        <Text bold color={THEME.primary}>
+      <Box
+        marginBottom={1}
+        borderStyle="round"
+        borderColor={THEME.border}
+        paddingX={1}
+      >
+        <Text bold color={THEME.primaryLight}>
           {title.charAt(0).toUpperCase() + title.slice(1)}
         </Text>
       </Box>
+
       {items.length === 0 ? (
-        <Text color={THEME.muted}>{emptyMessage}</Text>
+        <Box paddingY={2} justifyContent="center">
+          <Text color={THEME.mutedDim}>{emptyMessage}</Text>
+        </Box>
       ) : (
         windowedItems.items.map((item, index) => {
           const actualIndex = windowedItems.start + index;
           const isSelected = actualIndex === selectedIndex;
+
           return (
-            <Box key={`${item.value}-${actualIndex}`} flexDirection="column" marginBottom={0}>
+            <Box
+              key={`${item.value}-${actualIndex}`}
+              flexDirection="column"
+              marginBottom={0}
+              paddingX={1}
+              paddingY={isSelected ? 0 : undefined}
+            >
               <Box>
-                <Text color={isSelected ? THEME.secondary : THEME.muted}>
-                  {isSelected ? "› " : "  "}
+                <Text color={isSelected ? THEME.primaryLight : THEME.borderDim}>
+                  {isSelected ? "▸" : " "}
                 </Text>
+                <Text> </Text>
                 <Text
-                  color={isSelected ? THEME.text : THEME.muted}
+                  color={isSelected ? THEME.text : THEME.textDim}
                   bold={isSelected}
-                  backgroundColor={isSelected ? THEME.highlight : undefined}
+                  backgroundColor={isSelected ? THEME.highlightSecondary : undefined}
                 >
-                   {item.icon ? `${item.icon} ` : ""}{item.label} 
+                  {item.icon ? `${item.icon} ` : ""}{item.label}
                 </Text>
                 {item.description ? (
                   <Text color={THEME.muted} dimColor>
@@ -74,6 +90,15 @@ export const MenuList: React.FC<MenuListProps> = ({
             </Box>
           );
         })
+      )}
+
+      {/* Page indicator */}
+      {maxItems && items.length > maxItems && (
+        <Box marginTop={1} justifyContent="center">
+          <Text color={THEME.mutedDim}>
+            ─ {windowedItems.start + 1}-{windowedItems.start + windowedItems.items.length} of {items.length} ─
+          </Text>
+        </Box>
       )}
     </Box>
   );

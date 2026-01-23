@@ -110,9 +110,9 @@ export const App: React.FC = () => {
   const statusHints = useMemo(() => {
     if (currentRoute.id === "home") return commandHints;
     const trimmed = commandHints.trim();
-    if (trimmed.length === 0) return "ESC = EXIT";
-    if (trimmed.toUpperCase().includes("ESC")) return trimmed;
-    return `${trimmed}, ESC = EXIT`;
+    if (trimmed.length === 0) return "ESC -> Exit";
+    if (trimmed.toLowerCase().includes("esc")) return trimmed;
+    return `${trimmed}, ESC -> Exit`;
   }, [commandHints, currentRoute.id]);
 
   const nav = useMemo<Nav>(
@@ -192,10 +192,6 @@ export const App: React.FC = () => {
       exit();
     }
   });
-
-  useEffect(() => {
-    setCommandHints("");
-  }, [currentRoute.id]);
 
   const renderScreen = () => {
     const inputEnabled = !commandsVisible;
@@ -608,7 +604,9 @@ export const App: React.FC = () => {
       <Box flexGrow={1} flexDirection="column" paddingX={1} overflow="hidden">
         {headerText && (
           <Box marginBottom={1}>
-            <Text color={THEME.muted}>{headerText}</Text>
+            <Text color={THEME.muted} dimColor>
+              {headerText}
+            </Text>
           </Box>
         )}
         {commandsVisible ? <CommandsView /> : renderScreen()}

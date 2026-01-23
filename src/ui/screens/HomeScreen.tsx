@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { type MenuItem } from "../components/MenuList.js";
-import { THEME } from "../theme.js";
+import { GRADIENTS, THEME } from "../theme.js";
 
 const HOME_LOGO = [
-  "___  ___ _       _          _____  _   _  _____ ",
-  "|  \\/  |(_)     (_)        |_   _|| | | ||_   _|",
-  "| .  . | _ __  __ _  _ __    | |  | | | |  | |  ",
-  "| |\\/| || |\\ \\/ /| || '_ \\   | |  | | | |  | |  ",
-  "| |  | || | >  < | || | | |  | |  | |_| | _| |_ ",
-  "\\_|  |_/|_|/_/\\_\\|_||_| |_|  \\_/   \\___/  \\___/ ",
+  "███╗   ███╗██╗██╗  ██╗██╗███╗   ██╗      ████████╗██╗   ██╗██╗",
+  "████╗ ████║██║╚██╗██╔╝██║████╗  ██║      ╚══██╔══╝██║   ██║██║",
+  "██╔████╔██║██║ ╚███╔╝ ██║██╔██╗ ██║         ██║   ██║   ██║██║",
+  "██║╚██╔╝██║██║ ██╔██╗ ██║██║╚██╗██║         ██║   ██║   ██║██║",
+  "██║ ╚═╝ ██║██║██╔╝ ██╗██║██║ ╚████║         ██║   ╚██████╔╝██║",
+  "╚═╝     ╚═╝╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝         ╚═╝    ╚═════╝ ╚═╝",
 ];
 
 export const HomeScreen: React.FC<{
@@ -19,14 +19,23 @@ export const HomeScreen: React.FC<{
   setCommandHints: (hints: string) => void;
 }> = ({ items, onSelect, inputEnabled, setCommandHints }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [pulseFrame, setPulseFrame] = useState(0);
 
   useEffect(() => {
-    setCommandHints("ARROWS = CHOOSE, ENTER = OPEN, Q = QUIT, / = COMMANDS");
+    setCommandHints("ARROWS -> Choose, ENTER -> Open, Q -> Quit, / -> Commands");
   }, [setCommandHints]);
 
   useEffect(() => {
     setSelectedIndex(0);
   }, [items]);
+
+  // Subtle pulse animation for the logo
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPulseFrame((f) => (f + 1) % 4);
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
 
   useInput((input, key) => {
     if (!inputEnabled || items.length === 0) return;
@@ -44,16 +53,27 @@ export const HomeScreen: React.FC<{
     }
   });
 
+  const getLogoColor = (lineIndex: number): string => {
+    const gradient = GRADIENTS.cyan;
+    const offset = (lineIndex + pulseFrame) % gradient.length;
+    return gradient[offset];
+  };
+
   return (
     <Box flexDirection="column" alignItems="center" justifyContent="center" flexGrow={1}>
-      <Box flexDirection="column" marginBottom={1} alignItems="center">
-        {HOME_LOGO.map((line) => (
-          <Text key={line} color={THEME.primary} bold>
+      <Box flexDirection="column" marginBottom={2} alignItems="center">
+        {HOME_LOGO.map((line, i) => (
+          <Text key={i} color={getLogoColor(i)} bold>
             {line}
           </Text>
         ))}
         <Box marginTop={1}>
-          <Text color={THEME.muted} dimColor>
+          <Text color={THEME.muted}>
+            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          </Text>
+        </Box>
+        <Box marginTop={1}>
+          <Text color={THEME.textDim}>
             The terminal client for Mixin Network
           </Text>
         </Box>
@@ -61,8 +81,8 @@ export const HomeScreen: React.FC<{
 
       <Box
         flexDirection="column"
-        borderStyle="round"
-        borderColor={THEME.border}
+        borderStyle="double"
+        borderColor={THEME.primary}
         paddingX={3}
         paddingY={1}
         width={46}
@@ -70,23 +90,25 @@ export const HomeScreen: React.FC<{
         {items.map((item, index) => {
           const isSelected = selectedIndex === index;
           return (
-            <Box key={item.value} justifyContent="space-between">
+            <Box key={item.value} marginBottom={index < items.length - 1 ? 1 : 0}>
               <Box>
-                <Text color={isSelected ? THEME.secondary : THEME.border}>
-                  {isSelected ? ">" : " "}
+                <Text color={isSelected ? THEME.secondaryLight : THEME.borderDim}>
+                  {isSelected ? "▸" : " "}
                 </Text>
-                <Text>  </Text>
+                <Text> </Text>
                 <Text
-                  color={isSelected ? THEME.text : THEME.muted}
+                  color={isSelected ? THEME.text : THEME.textDim}
                   bold={isSelected}
                   backgroundColor={isSelected ? THEME.highlight : undefined}
                 >
                   {item.label}
                 </Text>
               </Box>
-              <Text color={isSelected ? THEME.secondary : THEME.border}>
-                {isSelected ? "Enter" : "     "}
-              </Text>
+              <Box width="fill" justifyContent="flex-end">
+                <Text color={isSelected ? THEME.muted : THEME.borderDim}>
+                  {isSelected ? "[ENTER]" : "       "}
+                </Text>
+              </Box>
             </Box>
           );
         })}

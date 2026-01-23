@@ -28,14 +28,14 @@ const renderFieldValue = (field: FormField, value: string) => {
   }
 
   const collapsed = value.replace(/\s+/g, " ");
-  
+
   if (field.type === "textarea" || collapsed.length > 50) {
-    const preview = collapsed.length > 45 
+    const preview = collapsed.length > 45
       ? `${collapsed.slice(0, 20)}...${collapsed.slice(-20)}`
       : collapsed;
     return (
       <Text>
-        {preview} <Text color={THEME.muted}>({value.length} chars)</Text>
+        {preview} <Text color={THEME.mutedDim}>({value.length} chars)</Text>
       </Text>
     );
   }
@@ -124,40 +124,69 @@ export const FormView: React.FC<FormViewProps> = ({
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Box marginBottom={1} borderStyle="round" borderColor={THEME.border} paddingX={1}>
-        <Text bold color={THEME.primary}>
+      <Box
+        marginBottom={1}
+        borderStyle="round"
+        borderColor={THEME.border}
+        paddingX={1}
+      >
+        <Text bold color={THEME.primaryLight}>
           {title.toUpperCase()}
         </Text>
       </Box>
-      <Box flexDirection="column" borderStyle="single" borderColor={THEME.border} padding={1}>
-        {fields.map((field, index) => (
-          <Box key={field.key} flexDirection="row" marginBottom={1}>
-            <Box width={20}>
-              <Text
-                color={index === activeIndex ? THEME.secondary : THEME.muted}
-                bold={index === activeIndex}
-              >
-                {index === activeIndex ? "› " : "  "}
-                {field.label}
-              </Text>
+
+      <Box
+        flexDirection="column"
+        borderStyle="single"
+        borderColor={THEME.border}
+        paddingX={2}
+        paddingY={1}
+      >
+        {fields.map((field, index) => {
+          const isActive = index === activeIndex;
+          return (
+            <Box
+              key={field.key}
+              flexDirection="row"
+              marginBottom={index < fields.length - 1 ? 1 : 0}
+              alignItems="center"
+            >
+              <Box width={22}>
+                <Text
+                  color={isActive ? THEME.secondaryLight : THEME.mutedDim}
+                  bold={isActive}
+                >
+                  {isActive ? "▸" : " "}
+                  {field.label}
+                </Text>
+              </Box>
+              <Box flexGrow={1}>
+                <Text color={THEME.mutedDim}>│ </Text>
+                <Text
+                  color={isActive ? THEME.text : THEME.textDim}
+                  backgroundColor={isActive ? THEME.highlight : undefined}
+                  bold={isActive}
+                >
+                  {values[field.key]?.length
+                    ? renderFieldValue(field, values[field.key])
+                    : isActive
+                      ? ""
+                      : field.placeholder || "..."}
+                </Text>
+                {isActive && <Text color={THEME.secondaryLight}>_</Text>}
+              </Box>
             </Box>
-            <Box>
-              <Text color={THEME.muted}>│ </Text>
-              <Text
-                color={index === activeIndex ? THEME.text : THEME.muted}
-                backgroundColor={index === activeIndex ? THEME.highlight : undefined}
-              >
-                 {values[field.key]?.length
-                  ? renderFieldValue(field, values[field.key])
-                  : index === activeIndex
-                    ? ""
-                    : field.placeholder || "..."} 
-              </Text>
-              {index === activeIndex && <Text color={THEME.secondary}>_</Text>}
-            </Box>
-          </Box>
-        ))}
+          );
+        })}
       </Box>
+
+      {helpText && (
+        <Box marginTop={1} justifyContent="center">
+          <Text color={THEME.mutedDim} dimColor>
+            {helpText}
+          </Text>
+        </Box>
+      )}
     </Box>
   );
 };

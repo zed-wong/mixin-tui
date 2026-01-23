@@ -22,7 +22,7 @@ export const NetworkAssetsScreen: React.FC<{
   const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    setCommandHints("ARROWS = SELECT, ENTER = DETAIL, ESC = EXIT");
+    setCommandHints("ARROWS -> Select, ENTER -> Detail, ESC -> Exit");
   }, [setCommandHints]);
 
   useEffect(() => {
@@ -106,7 +106,7 @@ export const SafeAssetsScreen: React.FC<{
   const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    setCommandHints("ARROWS = SELECT, ENTER = DETAIL, ESC = EXIT");
+    setCommandHints("ARROWS -> Select, ENTER -> Detail, ESC -> Exit");
   }, [setCommandHints]);
 
   useEffect(() => {
