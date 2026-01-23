@@ -295,13 +295,21 @@ export const WalletSnapshotsScreen: React.FC<{
       .listSnapshotsWithAssets(request)
       .then((snapshots) => {
         if (requestId !== fetchRequestRef.current) return;
-        const mapped = snapshots.map((snapshot) => ({
-          label: `${new BigNumber(snapshot.amount).toFixed()} ${
-            snapshot.asset_symbol ?? snapshot.asset_id
-          }`,
-          value: snapshot.snapshot_id,
-          description: `${formatTimestamp(snapshot.created_at)}  ${snapshot.type}`,
-        }));
+        const mapped = snapshots.map((snapshot) => {
+          let typeLabel = snapshot.type;
+          if (snapshot.deposit) {
+            typeLabel = "deposit";
+          } else if (snapshot.withdrawal) {
+            typeLabel = "withdrawal";
+          } else if (snapshot.opponent_id) {
+            typeLabel = "transfer";
+          }
+          return {
+            label: `${new BigNumber(snapshot.amount).toFixed()} ${snapshot.asset_symbol ?? snapshot.asset_id}`,
+            value: snapshot.snapshot_id,
+            description: `${formatTimestamp(snapshot.created_at)}  ${typeLabel}  snapshot_id: ${snapshot.snapshot_id}`,
+          };
+        });
         setItems(mapped);
         snapshotCache.set(requestKey, { items: mapped, timestamp: Date.now() });
         setStatus("idle", "Ready");
@@ -478,9 +486,9 @@ export const TransferToUserScreen: React.FC<{
             const entry = Array.isArray(result) ? result[0] : result;
             const summaryLines = entry
               ? buildTxSummary(
-                  entry as unknown as Record<string, unknown>,
-                  values.opponentId ?? ""
-                )
+                entry as unknown as Record<string, unknown>,
+                values.opponentId ?? ""
+              )
               : undefined;
             nav.push({
               id: "result",
