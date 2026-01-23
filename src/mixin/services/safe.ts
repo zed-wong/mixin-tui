@@ -32,9 +32,13 @@ const fetchAllSafeSnapshots = async (
     }
   }
 
-  const sorted = snapshots
-    .slice()
-    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  // Deduplicate by snapshot_id (API may return duplicates across pages)
+  const uniqueBySnapshotId = new Map(
+    snapshots.map((s) => [s.snapshot_id, s])
+  ).values();
+  const sorted = Array.from(uniqueBySnapshotId).sort(
+    (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)
+  );
   return sorted;
 };
 
