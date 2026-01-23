@@ -8,12 +8,18 @@ Inspired by [mixin-cli](https://github.com/fox-one/mixin-cli). Written in Typesc
 
 ## Usage
 
-### Run via npx (Recommended)
+### Run via npx or bunx (Recommended)
 
-You can run the TUI directly without cloning the repository if it's published to npm:
+You can run the TUI directly without cloning the repository:
 
 ```bash
 npx mixin-tui
+```
+
+or
+
+```bash
+bunx mixin-tui
 ```
 
 ### Local Development
