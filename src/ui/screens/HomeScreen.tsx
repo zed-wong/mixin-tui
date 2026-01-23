@@ -12,6 +12,13 @@ const HOME_LOGO = [
   "╚═╝     ╚═╝╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝         ╚═╝    ╚═════╝ ╚═╝",
 ];
 
+const SMALL_LOGO = [
+  " __  __ _      _       _____ _   _ ___ ",
+  "|  \\/  (_)__ _(_)_ _  |_   _| | | |_ _|",
+  "| |\\/| | / _` | | ' \\   | | | |_| || | ",
+  "|_|  |_|_\\__,_|_|_||_|  |_|  \\___/|___|",
+];
+
 export const HomeScreen: React.FC<{
   items: MenuItem[];
   onSelect: (item: MenuItem) => void;
@@ -40,7 +47,7 @@ export const HomeScreen: React.FC<{
   }, [stdout]);
 
   useEffect(() => {
-    setCommandHints("ARROWS -> Choose, ENTER -> Open, Q -> Quit, / -> Commands");
+    setCommandHints("▲ / ▼ -> Choose, ENTER -> Open, / -> Commands, Q -> Quit");
   }, [setCommandHints]);
 
   useEffect(() => {
@@ -89,9 +96,11 @@ export const HomeScreen: React.FC<{
             </Text>
           ))
         ) : (
-          <Box flexDirection="column" alignItems="center" marginBottom={1}>
-            <Text color={THEME.primary} bold>MIXIN TUI</Text>
-          </Box>
+          SMALL_LOGO.map((line, i) => (
+            <Text key={i} color={getLogoColor(i)} bold>
+              {line}
+            </Text>
+          ))
         )}
         <Box marginTop={1}>
           <Text color={THEME.muted}>
@@ -100,11 +109,13 @@ export const HomeScreen: React.FC<{
               : "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"}
           </Text>
         </Box>
-        <Box marginTop={1}>
-          <Text color={THEME.textDim}>
-            The terminal client for Mixin Network
-          </Text>
-        </Box>
+        {!isSmallScreen && (
+          <Box marginTop={1}>
+            <Text color={THEME.textDim}>
+              The terminal client for Mixin Network
+            </Text>
+          </Box>
+        )}
       </Box>
 
       <Box
