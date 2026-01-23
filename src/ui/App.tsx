@@ -42,7 +42,7 @@ export const App: React.FC = () => {
 
   const [services, setServices] = useState<MixinServices | null>(null);
   const [status, setStatus] = useState<StatusState>("idle");
-  const [message, setMessage] = useState("Select a bot to get started");
+  const [message, setMessage] = useState("Initializing...");
   const [commandHints, setCommandHints] = useState("");
   const [configPath, setConfigPath] = useState("");
   const [commandsVisible, setCommandsVisible] = useState(false);
@@ -173,8 +173,10 @@ export const App: React.FC = () => {
       const configs = await listStoredConfigs();
       if (configs.length === 0) {
         setRouteStack([{ id: "onboarding" }]);
+        setMessage("Add your first bot to get started");
       } else {
         setRouteStack([{ id: "config-switch" }]);
+        setMessage("Select a bot to get started");
       }
     };
     void checkInitialRoute();

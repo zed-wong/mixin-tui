@@ -10,7 +10,7 @@ type OnboardingSelection = {
   label: string;
 };
 
-type OnboardingMode = "intro" | "steps" | "add" | "help";
+type OnboardingMode = "intro" | "help" | "add";
 
 // ASCII art logo for Mixin TUI
 const LOGO = [
@@ -32,7 +32,7 @@ const SETUP_STEPS = [
   {
     num: "1",
     title: "Create a Mixin Bot",
-    desc: "Visit https://mixin.one/bot and create your bot",
+    desc: "Visit https://developers.mixin.one/dashboard and create your bot",
     detail: "You'll get an App ID and can download the keystore",
   },
   {
@@ -44,7 +44,7 @@ const SETUP_STEPS = [
   {
     num: "3",
     title: "Connect Your Bot",
-    desc: "Paste the keystore JSON below to connect",
+    desc: "Paste the keystore JSON to connect",
     detail: "Your config is stored locally in ~/.mixin-tui/configs/",
   },
 ];
@@ -66,22 +66,22 @@ export const OnboardingScreen: React.FC<{
   const [animationFrame, setAnimationFrame] = useState(0);
 
   useEffect(() => {
+    // Only animate on intro screen to avoid interfering with form input
+    if (mode !== "intro") return;
+
     const interval = setInterval(() => {
       setAnimationFrame((prev) => (prev + 1) % 4);
     }, 500);
     return () => clearInterval(interval);
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     switch (mode) {
       case "intro":
-        setCommandHints("ENTER = Continue, Q = Quit, H = Help");
-        break;
-      case "steps":
-        setCommandHints("ENTER = Add Bot, Q = Quit, H = Help");
+        setCommandHints("ENTER = Continue, H = Help, Q = Quit");
         break;
       case "help":
-        setCommandHints("ESC = Back, Q = Quit");
+        setCommandHints("ENTER = Add Bot, ESC = Back, Q = Quit");
         break;
       case "add":
         setCommandHints("ENTER = SAVE & START, ESC = BACK");
@@ -97,17 +97,21 @@ export const OnboardingScreen: React.FC<{
       return;
     }
 
-    if (mode === "help" && key.escape) {
-      setMode("steps");
-      return;
-    }
-
-    if (mode === "intro" || mode === "steps") {
+    if (mode === "intro") {
       if (key.return) {
-        setMode("add");
+        setMode("help");
       }
       if (input === "h" || input === "H") {
         setMode("help");
+      }
+    }
+
+    if (mode === "help") {
+      if (key.return) {
+        setMode("add");
+      }
+      if (key.escape) {
+        setMode("intro");
       }
     }
   });
@@ -145,10 +149,10 @@ export const OnboardingScreen: React.FC<{
               "error",
               error instanceof Error ? error.message : String(error)
             );
-            setMode("steps");
+            setMode("help");
           }
         }}
-        onCancel={() => setMode("steps")}
+        onCancel={() => setMode("help")}
         inputEnabled={inputEnabled}
         setCommandHints={setCommandHints}
       />
@@ -158,6 +162,7 @@ export const OnboardingScreen: React.FC<{
   if (mode === "help") {
     return (
       <Box flexDirection="column" paddingX={1}>
+        {/* What is Mixin TUI section */}
         <Box marginBottom={1}>
           <Text bold color={THEME.primary}>
             What is Mixin TUI?
@@ -172,6 +177,7 @@ export const OnboardingScreen: React.FC<{
           </Text>
         </Box>
 
+        {/* Key Features section */}
         <Box marginBottom={1}>
           <Text bold color={THEME.secondary}>
             Key Features:
@@ -187,6 +193,32 @@ export const OnboardingScreen: React.FC<{
           </Box>
         ))}
 
+        {/* Setup Steps section */}
+        <Box marginTop={1} marginBottom={1}>
+          <Text bold color={THEME.secondary}>
+            How to Setup:
+          </Text>
+        </Box>
+
+        {SETUP_STEPS.map((step) => (
+          <Box key={step.num} marginBottom={1} flexDirection="column">
+            <Box>
+              <Text bold color={THEME.primaryLight}>
+                {step.num}. {step.title}
+              </Text>
+            </Box>
+            <Box paddingLeft={2}>
+              <Text color={THEME.text}>{step.desc}</Text>
+            </Box>
+            <Box paddingLeft={2}>
+              <Text color={THEME.muted} dimColor>
+                {step.detail}
+              </Text>
+            </Box>
+          </Box>
+        ))}
+
+        {/* Privacy section */}
         <Box marginTop={1}>
           <Text bold color={THEME.secondary}>
             Is my data safe?
@@ -202,52 +234,8 @@ export const OnboardingScreen: React.FC<{
 
         <Box marginTop={1}>
           <Text color={THEME.muted} dimColor>
-            Press <Text bold>ESC</Text> to go back, <Text bold>Q</Text> to quit
-          </Text>
-        </Box>
-      </Box>
-    );
-  }
-
-  if (mode === "steps") {
-    return (
-      <Box flexDirection="column" paddingX={1}>
-        <Box marginBottom={1}>
-          <Text bold color={THEME.primary}>
-            Setup Your Bot
-          </Text>
-        </Box>
-
-        <Box marginBottom={1}>
-          <Text color={THEME.muted}>
-            Follow these steps to connect your Mixin bot:
-          </Text>
-        </Box>
-
-        <Box marginTop={1} flexDirection="column">
-          {SETUP_STEPS.map((step, idx) => (
-            <Box key={idx} marginBottom={1} flexDirection="column">
-              <Box>
-                <Text bold color={THEME.primaryLight}>
-                  {step.num}. {step.title}
-                </Text>
-              </Box>
-              <Box paddingLeft={2}>
-                <Text color={THEME.text}>{step.desc}</Text>
-              </Box>
-              <Box paddingLeft={2}>
-                <Text color={THEME.muted} dimColor>
-                  {step.detail}
-                </Text>
-              </Box>
-            </Box>
-          ))}
-        </Box>
-
-        <Box marginTop={1}>
-          <Text color={THEME.muted} dimColor>
-            Press <Text bold>ENTER</Text> to add your bot,{" "}
-            <Text bold>H</Text> for help, <Text bold>Q</Text> to quit
+            Press <Text bold>ENTER</Text> to add bot,{" "}
+            <Text bold>ESC</Text> back, <Text bold>Q</Text> to quit
           </Text>
         </Box>
       </Box>
@@ -304,7 +292,7 @@ export const OnboardingScreen: React.FC<{
 
       <Box marginTop={1}>
         <Text color={THEME.muted} dimColor>
-          Press <Text bold>ENTER</Text> to get started,{" "}
+          Press <Text bold>ENTER</Text> to continue,{" "}
           <Text bold>H</Text> for help, <Text bold>Q</Text> to quit
         </Text>
       </Box>
