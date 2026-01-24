@@ -250,10 +250,20 @@ export const WalletSnapshotsScreen: React.FC<{
   nav: Nav;
   setStatus: (state: StatusState, message: string) => void;
   filters?: SnapshotFilters;
+  refreshToken?: number;
   inputEnabled: boolean;
   maxItems?: number;
   setCommandHints: (hints: string) => void;
-}> = ({ services, nav, setStatus, filters, inputEnabled, maxItems, setCommandHints }) => {
+}> = ({
+  services,
+  nav,
+  setStatus,
+  filters,
+  refreshToken,
+  inputEnabled,
+  maxItems,
+  setCommandHints,
+}) => {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -284,7 +294,10 @@ export const WalletSnapshotsScreen: React.FC<{
     };
   }, [filters]);
 
-  const requestKey = useMemo(() => JSON.stringify(request), [request]);
+  const requestKey = useMemo(
+    () => JSON.stringify({ request, refreshToken }),
+    [request, refreshToken]
+  );
 
   const loadSnapshots = () => {
     if (!services) return;

@@ -47,7 +47,7 @@ export const UserProfileScreen: React.FC<{
     return <Text color={THEME.muted}>Loading profile...</Text>;
   }
 
-  return <FormattedView title="My Profile" data={data} inputEnabled={inputEnabled} />;
+  return <FormattedView title="My Profile" data={data} />;
 };
 
 export const UserFetchScreen: React.FC<{

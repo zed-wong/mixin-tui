@@ -12,7 +12,7 @@ export type Route =
   | { id: "onboarding" }
   | { id: "wallet-menu" }
   | { id: "wallet-assets" }
-  | { id: "wallet-snapshots"; filters?: SnapshotFilters }
+  | { id: "wallet-snapshots"; filters?: SnapshotFilters; refreshToken?: number }
   | { id: "wallet-snapshot-filter"; filters?: SnapshotFilters }
   | { id: "transfer-to-user"; assetId?: string }
   | { id: "transfer-refund" }
@@ -38,6 +38,7 @@ export type Route =
     copyText?: string;
     summaryLines?: string[];
     refundSnapshotId?: string;
+    returnToId?: "wallet-snapshots";
   };
 
 export type Nav = {

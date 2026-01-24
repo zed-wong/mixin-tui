@@ -320,6 +320,7 @@ export const App: React.FC = () => {
             nav={nav}
             setStatus={setStatusMessage}
             filters={currentRoute.filters}
+            refreshToken={currentRoute.refreshToken}
             inputEnabled={inputEnabled}
             maxItems={listMaxItems}
             setCommandHints={setCommandHints}
@@ -382,6 +383,7 @@ export const App: React.FC = () => {
                     title: "Refund Result",
                     data: result,
                     summaryLines,
+                    returnToId: "wallet-snapshots",
                   });
                   setStatusMessage("idle", "Ready");
                 })
@@ -594,6 +596,7 @@ export const App: React.FC = () => {
         const copyText = currentRoute.copyText;
         const resultMaxItems = Math.max(3, dimensions.rows - 10);
         const refundSnapshotId = currentRoute.refundSnapshotId;
+        const returnToId = currentRoute.returnToId;
         const refundEnabled =
           refundSnapshotId &&
           (() => {
@@ -601,11 +604,33 @@ export const App: React.FC = () => {
             const amount = Number(data?.amount ?? 0);
             return amount > 0;
           })();
+        const handleResultBack = () => {
+          if (!returnToId) {
+            nav.pop();
+            return;
+          }
+          setRouteStack((stack) => {
+            for (let index = stack.length - 1; index >= 0; index -= 1) {
+              if (stack[index].id === returnToId) {
+                const nextStack = stack.slice(0, index + 1);
+                const target = nextStack[index];
+                if (target.id === "wallet-snapshots") {
+                  nextStack[index] = {
+                    ...target,
+                    refreshToken: Date.now(),
+                  };
+                }
+                return nextStack;
+              }
+            }
+            return stack.length > 1 ? stack.slice(0, -1) : stack;
+          });
+        };
         const onRefund =
           refundEnabled && services
             ? () => {
-              nav.push({
-                id: "refund-confirm",
+                nav.push({
+                  id: "refund-confirm",
                 refundSnapshotId,
                 snapshotData: currentRoute.data as Record<string, unknown>,
               });
@@ -615,7 +640,7 @@ export const App: React.FC = () => {
           <ResultScreen
             title={currentRoute.title}
             data={currentRoute.data}
-            onBack={() => nav.pop()}
+            onBack={handleResultBack}
             setCommandHints={setCommandHints}
             onCopy={
               copyText
