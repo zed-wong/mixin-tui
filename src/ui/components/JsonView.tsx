@@ -39,20 +39,31 @@ const formatArray = (data: unknown[]) => {
 
 type FormattedViewProps = {
   title: string;
-  data: unknown;
+  data?: unknown;
+  lines?: string[];
+  totalLines?: number;
+  scrollOffset?: number;
+  showScrollIndicator?: boolean;
 };
 
 export const FormattedView: React.FC<FormattedViewProps> = ({
   title,
   data,
+  lines,
+  totalLines,
+  scrollOffset = 0,
+  showScrollIndicator = false,
 }) => {
-  const lines = React.useMemo(() => {
+  const displayLines = React.useMemo(() => {
+    if (lines) return lines;
     return Array.isArray(data)
       ? formatArray(data)
       : data && typeof data === "object"
         ? formatObject(data as Record<string, unknown>)
         : [formatValue(data)];
-  }, [data]);
+  }, [data, lines]);
+
+  const totalCount = totalLines ?? displayLines.length;
 
   return (
     <Box flexDirection="column" paddingX={1}>
@@ -74,16 +85,25 @@ export const FormattedView: React.FC<FormattedViewProps> = ({
         paddingY={1}
         flexDirection="column"
       >
-        {lines.length === 0 ? (
+        {displayLines.length === 0 ? (
           <Box justifyContent="center" paddingY={2}>
             <Text color={THEME.mutedDim}>No data available</Text>
           </Box>
         ) : (
-          lines.map((line, index) => (
-            <Box key={index}>
-              <Text color={THEME.textDim}>{line}</Text>
-            </Box>
-          ))
+          <>
+            {displayLines.map((line, index) => (
+              <Box key={`${scrollOffset}-${index}-${line.slice(0, 20)}`}>
+                <Text color={THEME.textDim}>{line}</Text>
+              </Box>
+            ))}
+            {showScrollIndicator && totalCount > 0 && (
+              <Box marginTop={1} justifyContent="center">
+                <Text color={THEME.mutedDim}>
+                  ─ {scrollOffset + 1}-{scrollOffset + displayLines.length} of {totalCount} ─
+                </Text>
+              </Box>
+            )}
+          </>
         )}
       </Box>
     </Box>
