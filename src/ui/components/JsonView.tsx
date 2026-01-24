@@ -109,6 +109,7 @@ export const FormattedView: React.FC<FormattedViewProps> = ({
         paddingX={1}
         paddingY={1}
         flexDirection="column"
+        height={maxItems}
       >
         {visibleLines.length === 0 ? (
           <Box justifyContent="center" paddingY={2}>
@@ -116,7 +117,7 @@ export const FormattedView: React.FC<FormattedViewProps> = ({
           </Box>
         ) : (
           visibleLines.map((line, index) => (
-            <Box key={`${offset + index}-${line.slice(0, 20)}`} marginBottom={0}>
+            <Box key={`${offset + index}-${line.slice(0, 20)}`}>
               <Text color={THEME.textDim}>{line}</Text>
             </Box>
           ))
