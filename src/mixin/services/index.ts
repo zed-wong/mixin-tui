@@ -14,7 +14,7 @@ export const createServices = (client: MixinClient, config: MixinConfig) => ({
   user: createUserService(client),
   network: createNetworkService(client),
   safe: createSafeService(client),
-  messages: createMessagesService(client),
+  messages: createMessagesService(client, { appId: config.app_id }),
   auth: createAuthService(config),
 });
 
