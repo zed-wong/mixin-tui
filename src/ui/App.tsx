@@ -11,7 +11,15 @@ import { AuthTokenScreen } from "./screens/AuthScreen.js";
 import { ConfigSwitchScreen } from "./screens/ConfigScreen.js";
 import { HomeScreen } from "./screens/HomeScreen.js";
 import { MenuScreen } from "./screens/MenuScreen.js";
-import { MessagesSendTextScreen, MessagesStreamScreen } from "./screens/MessageScreens.js";
+import {
+  MessagesSendTextScreen,
+  MessagesStreamScreen,
+  MessagesGroupCreateScreen,
+  MessagesGroupListScreen,
+  MessagesGroupChatScreen,
+  MessagesGroupSendScreen,
+  MessagesSettingsScreen,
+} from "./screens/MessageScreens.js";
 import {
   NetworkAssetFetchForm,
   NetworkAssetSearchScreen,
@@ -47,6 +55,9 @@ export const App: React.FC = () => {
   const [commandHints, setCommandHints] = useState("");
   const [configPath, setConfigPath] = useState("");
   const [commandsVisible, setCommandsVisible] = useState(false);
+  const [backgroundBlazeEnabled, setBackgroundBlazeEnabled] = useState<
+    boolean | null
+  >(null);
   const [routeStack, setRouteStack] = useState<Route[]>([{ id: "config-switch" }]);
 
   const currentRoute = routeStack[routeStack.length - 1];
@@ -92,6 +103,18 @@ export const App: React.FC = () => {
         return "Auth Token";
       case "messages-menu":
         return "Messages";
+      case "messages-group-menu":
+        return "Group Conversations";
+      case "messages-group-create":
+        return "Create Group";
+      case "messages-group-list":
+        return "Group List";
+      case "messages-group-chat":
+        return "Group Chat";
+      case "messages-group-send":
+        return "Send Group Message";
+      case "messages-settings":
+        return "Message Settings";
       case "messages-send-text":
         return "Send Text";
       case "messages-stream":
@@ -185,6 +208,21 @@ export const App: React.FC = () => {
     };
     void checkInitialRoute();
   }, []);
+
+  useEffect(() => {
+    if (!services) return;
+    const enabled = services.messages.getBackgroundBlazeEnabled();
+    setBackgroundBlazeEnabled(enabled);
+  }, [services]);
+
+  useEffect(() => {
+    if (!services || backgroundBlazeEnabled === null) return;
+    if (!backgroundBlazeEnabled) return;
+    services.messages.startConversationStream({});
+    return () => {
+      services.messages.stopStream();
+    };
+  }, [services, backgroundBlazeEnabled]);
 
   useInput((input, key) => {
     if (key.ctrl && input === "c") {
@@ -526,6 +564,8 @@ export const App: React.FC = () => {
         const items: MenuItem[] = [
           { label: "Send Text", value: "send-text" },
           { label: "Stream", value: "stream" },
+          { label: "Group Conversations", value: "groups" },
+          { label: "Settings", value: "settings" },
           { label: "Back", value: "back" },
         ];
         return (
@@ -539,11 +579,93 @@ export const App: React.FC = () => {
               if (item.value === "send-text")
                 nav.push({ id: "messages-send-text" });
               if (item.value === "stream") nav.push({ id: "messages-stream" });
+              if (item.value === "groups") nav.push({ id: "messages-group-menu" });
+              if (item.value === "settings") nav.push({ id: "messages-settings" });
               if (item.value === "back") nav.pop();
             }}
           />
         );
       }
+      case "messages-group-menu": {
+        const items: MenuItem[] = [
+          { label: "Create Group", value: "create" },
+          { label: "Conversation List", value: "list" },
+          { label: "Back", value: "back" },
+        ];
+        return (
+          <MenuScreen
+            title="Group Conversations"
+            items={items}
+            inputEnabled={inputEnabled}
+            setCommandHints={setCommandHints}
+            onBack={() => nav.pop()}
+            onSelect={(item) => {
+              if (item.value === "create") nav.push({ id: "messages-group-create" });
+              if (item.value === "list") nav.push({ id: "messages-group-list" });
+              if (item.value === "back") nav.pop();
+            }}
+          />
+        );
+      }
+      case "messages-group-create":
+        return (
+          <MessagesGroupCreateScreen
+            services={services}
+            nav={nav}
+            setStatus={setStatusMessage}
+            inputEnabled={inputEnabled}
+            setCommandHints={setCommandHints}
+          />
+        );
+      case "messages-group-list":
+        return (
+          <MessagesGroupListScreen
+            services={services}
+            nav={nav}
+            inputEnabled={inputEnabled}
+            setCommandHints={setCommandHints}
+          />
+        );
+      case "messages-group-chat":
+        return (
+          <MessagesGroupChatScreen
+            services={services}
+            nav={nav}
+            setStatus={setStatusMessage}
+            inputEnabled={inputEnabled}
+            conversationId={currentRoute.conversationId}
+            name={currentRoute.name}
+            setCommandHints={setCommandHints}
+          />
+        );
+      case "messages-group-send":
+        return (
+          <MessagesGroupSendScreen
+            services={services}
+            nav={nav}
+            setStatus={setStatusMessage}
+            inputEnabled={inputEnabled}
+            conversationId={currentRoute.conversationId}
+            setCommandHints={setCommandHints}
+          />
+        );
+      case "messages-settings":
+        return (
+          <MessagesSettingsScreen
+            nav={nav}
+            inputEnabled={inputEnabled}
+            backgroundBlazeEnabled={backgroundBlazeEnabled}
+            onToggleBackgroundBlaze={() => {
+              if (!services) return;
+              setBackgroundBlazeEnabled((prev) => {
+                const next = prev === null ? true : !prev;
+                services.messages.setBackgroundBlazeEnabled(next);
+                return next;
+              });
+            }}
+            setCommandHints={setCommandHints}
+          />
+        );
       case "messages-send-text":
         return (
           <MessagesSendTextScreen

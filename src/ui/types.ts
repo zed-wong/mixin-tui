@@ -30,6 +30,12 @@ export type Route =
   | { id: "messages-menu" }
   | { id: "messages-send-text"; userId?: string; returnToStream?: boolean }
   | { id: "messages-stream" }
+  | { id: "messages-group-menu" }
+  | { id: "messages-group-create" }
+  | { id: "messages-group-list" }
+  | { id: "messages-group-chat"; conversationId: string; name?: string }
+  | { id: "messages-group-send"; conversationId: string }
+  | { id: "messages-settings" }
   | { id: "config-switch" }
   | {
     id: "result";

@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { FormView } from "../components/FormView.js";
+import { MenuList } from "../components/MenuList.js";
 import { THEME } from "../theme.js";
 import type { MixinServices } from "../../mixin/services/index.js";
 import type { Nav, StatusState } from "../types.js";
@@ -12,6 +13,16 @@ type StreamMessage = {
   content: string;
   createdAt: string;
   senderName?: string;
+};
+
+type LocalMessage = {
+  messageId: string;
+  userId: string;
+  category: string;
+  content: string;
+  createdAt: string;
+  direction: "incoming" | "outgoing";
+  status: "received" | "sent" | "withdrawn";
 };
 
 export const MessagesSendTextScreen: React.FC<{
@@ -97,90 +108,52 @@ export const MessagesStreamScreen: React.FC<{
     }
   };
 
-  const appendMessage = useCallback((nextMessage: StreamMessage) => {
-    setMessages((prev) => {
-      const next = [...prev, nextMessage].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-      return next.slice(-50);
-    });
-  }, []);
+  const refreshMessages = useCallback(() => {
+    if (!services) return;
+    const recent = services.messages.listRecentMessages(50);
+    setMessages(
+      recent
+        .map((msg) => ({
+          id: msg.messageId,
+          userId: msg.userId,
+          category: msg.category,
+          content: msg.status === "withdrawn" ? "[withdrawn]" : msg.content,
+          createdAt: msg.createdAt,
+          senderName: msg.direction === "outgoing" ? "You" : undefined,
+        }))
+        .reverse()
+    );
+  }, [services]);
 
   useEffect(() => {
     if (!services) return;
-    setStatus("loading", "Connecting to message stream...");
-
-    setMessages([]);
-    setSelectedIndex(null);
-
-    services.messages.startStream({
-      onMessage: (message: any) => {
-        let content = "";
-        if (message.category === "PLAIN_TEXT") {
-          if (typeof message.data === "string") {
-            content = message.data;
-          } else if (message.data instanceof Uint8Array) {
-            content = Buffer.from(message.data).toString();
-          } else if (
-            Array.isArray(message.data) &&
-            message.data.every((value: unknown) => typeof value === "number")
-          ) {
-            content = Buffer.from(message.data).toString();
-          } else if (
-            message.data &&
-            typeof message.data === "object" &&
-            "type" in message.data &&
-            (message.data as { type?: string }).type === "Buffer" &&
-            "data" in message.data &&
-            Array.isArray((message.data as { data?: unknown }).data)
-          ) {
-            content = Buffer.from((message.data as { data: number[] }).data).toString();
-          } else {
-            content = JSON.stringify(message.data);
-          }
-        } else if (message.category === "SYSTEM_ACCOUNT_SNAPSHOT") {
-          const data = message.data;
-          const amount = data.amount || "?";
-          const symbol = data.asset?.symbol || "Asset";
-          content = `Transfer: ${amount} ${symbol}`;
-        } else {
-          content = `[${message.category}]`;
-        }
-
-        const newMsg: StreamMessage = {
-          id: message.message_id,
-          userId: message.user_id,
-          category: message.category,
-          content: content,
-          createdAt: message.created_at,
-        };
-
-        appendMessage(newMsg);
-
-        const userId = message.user_id?.trim();
-        if (userId && !fetchedUsers.current.has(userId)) {
-          fetchedUsers.current.add(userId);
-
-          services.user
-            .fetch(userId)
-            .then((user) => {
-              setUserMap((prev) => ({
-                ...prev,
-                [user.user_id]: user.full_name,
-              }));
-            })
-            .catch(() => {
-              fetchedUsers.current.delete(userId);
-            });
-        }
-      },
-    });
     setStatus("idle", "Ready");
-    return () => {
-      services.messages.stopStream();
-      setStatus("idle", "Ready");
-    };
-  }, [services, setStatus, appendMessage]);
+    refreshMessages();
+    const timer = setInterval(refreshMessages, 1000);
+    return () => clearInterval(timer);
+  }, [services, setStatus, refreshMessages]);
+
+  useEffect(() => {
+    if (!services) return;
+    messages.forEach((message) => {
+      if (message.senderName === "You") return;
+      const userId = message.userId?.trim();
+      if (!userId || fetchedUsers.current.has(userId)) return;
+      fetchedUsers.current.add(userId);
+
+      services.user
+        .fetch(userId)
+        .then((user) => {
+          setUserMap((prev) => ({
+            ...prev,
+            [user.user_id]: user.full_name,
+          }));
+        })
+        .catch(() => {
+          fetchedUsers.current.delete(userId);
+        });
+    });
+  }, [messages, services]);
 
   if (!services) {
     return <Text color={THEME.muted}>Load a config to stream messages.</Text>;
@@ -315,6 +288,424 @@ export const MessagesStreamScreen: React.FC<{
           })}
         </Box>
       )}
+    </Box>
+  );
+};
+
+export const MessagesGroupCreateScreen: React.FC<{
+  services: MixinServices | null;
+  nav: Nav;
+  setStatus: (state: StatusState, message: string) => void;
+  inputEnabled: boolean;
+  setCommandHints: (hints: string) => void;
+}> = ({ services, nav, setStatus, inputEnabled, setCommandHints }) => {
+  if (!services) {
+    return <Text color={THEME.muted}>Load a config to create groups.</Text>;
+  }
+
+  return (
+    <FormView
+      title="Create Group"
+      fields={[
+        { key: "name", label: "Group Name", placeholder: "Team Chat" },
+        {
+          key: "participants",
+          label: "Participants",
+          placeholder: "UUIDs separated by comma/newline",
+          type: "textarea",
+        },
+      ]}
+      onCancel={() => nav.pop()}
+      inputEnabled={inputEnabled}
+      setCommandHints={setCommandHints}
+      helpText="ENTER = NEXT/SUBMIT, ESC = EXIT"
+      onSubmit={(values) => {
+        if (!inputEnabled) return;
+        setStatus("loading", "Creating group...");
+        const name = values.name ?? "";
+        const participants = (values.participants ?? "")
+          .split(/[,\n\r\s]+/)
+          .map((id) => id.trim())
+          .filter(Boolean);
+        services.messages
+          .createGroupConversation({ name, participantIds: participants })
+          .then((conversation) => {
+            setStatus("success", "Group created");
+            nav.push({
+              id: "messages-group-chat",
+              conversationId: conversation.conversation_id,
+              name: conversation.name,
+            });
+          })
+          .catch((error) => {
+            setStatus(
+              "error",
+              error instanceof Error ? error.message : String(error)
+            );
+          });
+      }}
+    />
+  );
+};
+
+export const MessagesGroupListScreen: React.FC<{
+  services: MixinServices | null;
+  nav: Nav;
+  inputEnabled: boolean;
+  setCommandHints: (hints: string) => void;
+}> = ({ services, nav, inputEnabled, setCommandHints }) => {
+  const [conversations, setConversations] = useState(
+    [] as Array<{
+      conversationId: string;
+      name: string;
+      participants: string[];
+    }>
+  );
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => {
+    setCommandHints("ENTER -> Open, ESC -> Back");
+  }, [setCommandHints]);
+
+  const refreshList = useCallback(() => {
+    if (!services) return;
+    const list = services.messages.listLocalConversations();
+    setConversations(
+      list.map((entry) => ({
+        conversationId: entry.conversationId,
+        name: entry.name,
+        participants: entry.participants,
+      }))
+    );
+    setSelectedIndex(0);
+  }, [services]);
+
+  useEffect(() => {
+    refreshList();
+  }, [refreshList]);
+
+  useEffect(() => {
+    if (!services) return;
+    const timer = setInterval(refreshList, 1000);
+    return () => clearInterval(timer);
+  }, [services, refreshList]);
+
+  useInput((input, key) => {
+    if (!inputEnabled) return;
+    if (key.escape) {
+      nav.pop();
+      return;
+    }
+    if (key.upArrow) {
+      setSelectedIndex((index) => Math.max(0, index - 1));
+      return;
+    }
+    if (key.downArrow) {
+      setSelectedIndex((index) => Math.min(conversations.length - 1, index + 1));
+      return;
+    }
+    if (key.return) {
+      const selected = conversations[selectedIndex];
+      if (!selected) return;
+      nav.push({
+        id: "messages-group-chat",
+        conversationId: selected.conversationId,
+        name: selected.name,
+      });
+    }
+  });
+
+  if (!services) {
+    return <Text color={THEME.muted}>Load a config to view groups.</Text>;
+  }
+
+  const items = useMemo(
+    () =>
+      conversations.map((conversation) => ({
+        label: conversation.name || conversation.conversationId,
+        value: conversation.conversationId,
+        description: `${conversation.participants.length} members`,
+      })),
+    [conversations]
+  );
+
+  return (
+    <MenuList
+      title="Group Conversations"
+      items={items}
+      selectedIndex={Math.max(0, Math.min(selectedIndex, items.length - 1))}
+      emptyMessage="No groups yet"
+      maxItems={Math.max(3, 16)}
+    />
+  );
+};
+
+export const MessagesGroupChatScreen: React.FC<{
+  services: MixinServices | null;
+  nav: Nav;
+  setStatus: (state: StatusState, message: string) => void;
+  inputEnabled: boolean;
+  conversationId: string;
+  name?: string;
+  setCommandHints: (hints: string) => void;
+}> = ({
+  services,
+  nav,
+  setStatus,
+  inputEnabled,
+  conversationId,
+  name,
+  setCommandHints,
+}) => {
+  const [messages, setMessages] = useState<LocalMessage[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  const refreshMessages = useCallback(() => {
+    if (!services) return;
+    setMessages(services.messages.listLocalMessages(conversationId));
+  }, [services, conversationId]);
+
+  useEffect(() => {
+    refreshMessages();
+  }, [refreshMessages]);
+
+  useEffect(() => {
+    if (!services) return;
+    const timer = setInterval(refreshMessages, 1000);
+    return () => clearInterval(timer);
+  }, [services, refreshMessages]);
+
+  useEffect(() => {
+    const hint = selectedIndex !== null
+      ? "ENTER/S -> Send, W -> Withdraw, ESC -> Back"
+      : "▲ / ▼ -> Select, ENTER -> Send, ESC -> Back";
+    setCommandHints(hint);
+  }, [selectedIndex, setCommandHints]);
+
+  useInput((input, key) => {
+    if (!inputEnabled) return;
+    if (key.escape) {
+      if (selectedIndex !== null) {
+        setSelectedIndex(null);
+        return;
+      }
+      nav.pop();
+      return;
+    }
+    if (key.upArrow) {
+      if (messages.length === 0) return;
+      setSelectedIndex((prev) => {
+        if (prev === null) return messages.length - 1;
+        return Math.max(0, prev - 1);
+      });
+      return;
+    }
+    if (key.downArrow) {
+      if (messages.length === 0) return;
+      setSelectedIndex((prev) => {
+        if (prev === null) return 0;
+        return Math.min(messages.length - 1, prev + 1);
+      });
+      return;
+    }
+    if (input === "w" && selectedIndex !== null && services) {
+      const target = messages[selectedIndex];
+      if (!target || target.direction !== "outgoing" || target.status === "withdrawn") {
+        return;
+      }
+      setStatus("loading", "Withdrawing message...");
+      services.messages
+        .withdrawMessage({
+          conversationId,
+          messageId: target.messageId,
+        })
+        .then(() => {
+          setStatus("success", "Message withdrawn");
+          refreshMessages();
+        })
+        .catch((error) => {
+          setStatus(
+            "error",
+            error instanceof Error ? error.message : String(error)
+          );
+        });
+      return;
+    }
+    if (key.return || input === "s") {
+      nav.push({ id: "messages-group-send", conversationId });
+    }
+  });
+
+  if (!services) {
+    return <Text color={THEME.muted}>Load a config to view messages.</Text>;
+  }
+
+  const displayMessages = messages.slice(-20);
+  const selectedMessage =
+    selectedIndex !== null ? displayMessages[selectedIndex] : null;
+
+  return (
+    <Box flexDirection="column" paddingX={1}>
+      <Box
+        marginBottom={1}
+        borderStyle="round"
+        borderColor={THEME.border}
+        paddingX={1}
+        flexDirection="row"
+        justifyContent="space-between"
+      >
+        <Text bold color={THEME.primary}>
+          {name ? name.toUpperCase() : "GROUP CHAT"}
+        </Text>
+        <Text color={THEME.muted}>{conversationId.slice(0, 8)}...</Text>
+      </Box>
+      {displayMessages.length === 0 ? (
+        <Text color={THEME.muted}>No local messages yet.</Text>
+      ) : (
+        <Box flexDirection="column">
+          {displayMessages.map((msg) => {
+            const isSelected = selectedMessage?.messageId === msg.messageId;
+            const sender = msg.direction === "outgoing" ? "You" : "Member";
+            const content = msg.status === "withdrawn" ? "[withdrawn]" : msg.content;
+            return (
+              <Box key={msg.messageId} flexDirection="column" marginBottom={1}>
+                <Box>
+                  <Text color={isSelected ? THEME.secondary : THEME.muted}>
+                    {isSelected ? "> " : "  "}
+                  </Text>
+                  <Text
+                    color={THEME.muted}
+                    backgroundColor={isSelected ? THEME.highlight : undefined}
+                  >
+                    [{new Date(msg.createdAt).toLocaleString()}] 
+                  </Text>
+                  <Text
+                    color={THEME.primary}
+                    bold
+                    backgroundColor={isSelected ? THEME.highlight : undefined}
+                  >
+                    {sender}
+                  </Text>
+                </Box>
+                <Box
+                  paddingLeft={1}
+                  borderStyle="single"
+                  borderTop={false}
+                  borderRight={false}
+                  borderBottom={false}
+                  borderColor={isSelected ? THEME.secondary : THEME.border}
+                >
+                  <Text color={THEME.text}>{content}</Text>
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+export const MessagesGroupSendScreen: React.FC<{
+  services: MixinServices | null;
+  nav: Nav;
+  setStatus: (state: StatusState, message: string) => void;
+  inputEnabled: boolean;
+  conversationId: string;
+  setCommandHints: (hints: string) => void;
+}> = ({
+  services,
+  nav,
+  setStatus,
+  inputEnabled,
+  conversationId,
+  setCommandHints,
+}) => {
+  if (!services) {
+    return <Text color={THEME.muted}>Load a config to send messages.</Text>;
+  }
+
+  return (
+    <FormView
+      title="Send Group Message"
+      fields={[{ key: "text", label: "Message", placeholder: "Text" }]}
+      onCancel={() => nav.pop()}
+      inputEnabled={inputEnabled}
+      setCommandHints={setCommandHints}
+      onSubmit={(values) => {
+        if (!inputEnabled) return;
+        setStatus("loading", "Sending message...");
+        const text = values.text ?? "";
+        services.messages
+          .sendConversationText(conversationId, text)
+          .then(() => {
+            setStatus("success", "Message sent");
+            nav.pop();
+          })
+          .catch((error) => {
+            setStatus(
+              "error",
+              error instanceof Error ? error.message : String(error)
+            );
+          });
+      }}
+    />
+  );
+};
+
+export const MessagesSettingsScreen: React.FC<{
+  nav: Nav;
+  inputEnabled: boolean;
+  backgroundBlazeEnabled: boolean | null;
+  onToggleBackgroundBlaze: () => void;
+  setCommandHints: (hints: string) => void;
+}> = ({
+  nav,
+  inputEnabled,
+  backgroundBlazeEnabled,
+  onToggleBackgroundBlaze,
+  setCommandHints,
+}) => {
+  useEffect(() => {
+    setCommandHints("ENTER/T -> Toggle, ESC -> Back");
+  }, [setCommandHints]);
+
+  useInput((input, key) => {
+    if (!inputEnabled) return;
+    if (key.escape) {
+      nav.pop();
+      return;
+    }
+    if (key.return || input === "t") {
+      onToggleBackgroundBlaze();
+    }
+  });
+
+  return (
+    <Box flexDirection="column" paddingX={1}>
+      <Box
+        marginBottom={1}
+        borderStyle="round"
+        borderColor={THEME.border}
+        paddingX={1}
+      >
+        <Text bold color={THEME.primaryLight}>
+          MESSAGE SETTINGS
+        </Text>
+      </Box>
+      <Box flexDirection="column" borderStyle="single" borderColor={THEME.border}>
+        <Box paddingX={2} paddingY={1}>
+          <Text color={THEME.muted}>Background Blaze</Text>
+          <Text> </Text>
+          {backgroundBlazeEnabled === null ? (
+            <Text color={THEME.muted}>Loading...</Text>
+          ) : (
+            <Text color={backgroundBlazeEnabled ? THEME.success : THEME.warning}>
+              {backgroundBlazeEnabled ? "ON" : "OFF"}
+            </Text>
+          )}
+        </Box>
+      </Box>
     </Box>
   );
 };
