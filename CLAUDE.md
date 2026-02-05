@@ -27,3 +27,12 @@
 - Saved configs live in `~/.mixin-tui/configs/*.json` and are listed in Manage Bots.
 - Manage Bots supports adding bots by pasting keystore JSON and removing saved bots.
 - Config keys (from `mixin-config.json.example`): `app_id`, `session_id`, `server_public_key`, `session_private_key`, optional `spend_private_key`, `oauth_client_secret`.
+
+## Mixin Conversation + Message Loop Notes (developers.mixin.one)
+- Create conversation (bot token only): `POST /conversations` with `category`, `conversation_id`, `participants`, optional `name` for groups. https://developers.mixin.one/docs/api/conversations/create
+- Read conversation metadata (name, participants, code_id/code_url): `GET /conversations/:id`. https://developers.mixin.one/docs/api/conversations/read
+- Group management (join via `code_id`, rotate invite, add/remove participants, exit, admin role): https://developers.mixin.one/docs/api/conversations/group
+- WebSocket message loop: after connect, send `LIST_PENDING_MESSAGES` first; all messages arrive via the loop. https://developers.mixin.one/docs/app/guide/message-loop
+- ACK required: after processing each message, send status `READ` (bulk via `POST /acknowledgements`) or server will re-push. https://developers.mixin.one/docs/api/messages/read
+- Bots only support `PLAIN_*` message categories for sending. https://developers.mixin.one/docs/api/messages/category
+- Docs do not explicitly list `SYSTEM_CONVERSATION`; when conversation-related events arrive over the loop, fetch `GET /conversations/:id` to refresh name/participants and persist locally.
