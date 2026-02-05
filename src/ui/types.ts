@@ -17,6 +17,13 @@ export type Route =
   | { id: "transfer-to-user"; assetId?: string }
   | { id: "transfer-refund" }
   | { id: "refund-confirm"; refundSnapshotId: string; snapshotData: Record<string, unknown> }
+  | { id: "wallet-multisig-menu" }
+  | { id: "wallet-multisig-groups" }
+  | { id: "wallet-multisig-group-detail"; groupId: string }
+  | { id: "wallet-multisig-transfer" }
+  | { id: "wallet-multisig-transactions"; groupId: string }
+  | { id: "wallet-multisig-balances"; groupId: string }
+  | { id: "wallet-multisig-overview" }
   | { id: "user-menu" }
   | { id: "user-profile" }
   | { id: "user-fetch" }
