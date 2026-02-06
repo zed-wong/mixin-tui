@@ -99,7 +99,6 @@ export const NetworkAssetsScreen: React.FC<{
       selectedIndex={selectedIndex}
       emptyMessage="No assets"
       maxItems={maxItems}
-      itemGap={1}
     />
   );
 };
