@@ -6,6 +6,8 @@ import { MenuList, type MenuItem } from "../components/MenuList.js";
 import { THEME } from "../theme.js";
 import type { MixinServices } from "../../mixin/services/index.js";
 import type { Nav, StatusState } from "../types.js";
+import { formatAssetListLine } from "../utils/assetDisplay.js";
+import { getNetworkAssetsShortcutRoute } from "../utils/networkShortcuts.js";
 
 export const NetworkAssetsScreen: React.FC<{
   services: MixinServices | null;
@@ -22,7 +24,7 @@ export const NetworkAssetsScreen: React.FC<{
   const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    setCommandHints("▲ / ▼ -> Select, ENTER -> Detail, ESC -> Exit");
+    setCommandHints("▲ / ▼ -> Select, ENTER -> Detail, S -> Search, ESC -> Exit");
   }, [setCommandHints]);
 
   useEffect(() => {
@@ -36,9 +38,13 @@ export const NetworkAssetsScreen: React.FC<{
         setRaw(assets);
         setItems(
           assets.map((asset, index) => ({
-            label: `${asset.symbol ?? "?"}  ${asset.price_usd ?? ""}`,
+            label: formatAssetListLine({
+              symbol: asset.symbol,
+              name: asset.name,
+              priceUsd: asset.price_usd,
+              assetId: asset.asset_id,
+            }),
             value: asset.asset_id ?? String(index),
-            description: asset.name ?? "",
           }))
         );
         setStatus("idle", "Ready");
@@ -68,6 +74,11 @@ export const NetworkAssetsScreen: React.FC<{
       setSelectedIndex((index) => (index + 1) % items.length);
       return;
     }
+    const shortcutRoute = getNetworkAssetsShortcutRoute(input);
+    if (shortcutRoute) {
+      nav.push(shortcutRoute);
+      return;
+    }
     if (key.return && raw[selectedIndex]) {
       nav.push({ id: "result", title: "Network Asset", data: raw[selectedIndex] });
     }
@@ -88,6 +99,7 @@ export const NetworkAssetsScreen: React.FC<{
       selectedIndex={selectedIndex}
       emptyMessage="No assets"
       maxItems={maxItems}
+      itemGap={1}
     />
   );
 };
@@ -120,9 +132,14 @@ export const SafeAssetsScreen: React.FC<{
         setRaw(assets);
           setItems(
             assets.map((asset, index) => ({
-              label: `${asset.symbol ?? "?"}  ${asset.price_usd ?? ""}`,
+              label: formatAssetListLine({
+                symbol: asset.symbol,
+                name: asset.name,
+                priceUsd: asset.price_usd,
+                assetId: asset.asset_id,
+              }),
               value: asset.asset_id ?? String(index),
-              description: `name: ${asset.name ?? "?"}  asset_id: ${asset.asset_id ?? "?"}  chain_id: ${asset.chain_id ?? "?"}`,
+              description: `chain_id: ${asset.chain_id ?? "?"}`,
             }))
           );
         setStatus("idle", "Ready");
@@ -136,7 +153,7 @@ export const SafeAssetsScreen: React.FC<{
       });
   }, [services, setStatus]);
 
-  useInput((input, key) => {
+  useInput((_input, key) => {
     if (!inputEnabled) return;
     if (key.escape) {
       nav.pop();
@@ -244,9 +261,14 @@ export const NetworkAssetSearchScreen: React.FC<{
         setRaw(assets);
         setItems(
           assets.map((asset, index) => ({
-            label: `${asset.symbol ?? "?"}  ${asset.price_usd ?? ""}`,
+            label: formatAssetListLine({
+              symbol: asset.symbol,
+              name: asset.name,
+              priceUsd: asset.price_usd,
+              assetId: asset.asset_id,
+            }),
             value: asset.asset_id ?? String(index),
-            description: `name: ${asset.name ?? "?"}  asset_id: ${asset.asset_id ?? "?"}  chain_id: ${asset.chain_id ?? "?"}`,
+            description: `chain_id: ${asset.chain_id ?? "?"}`,
           }))
         );
         setStatus("idle", "Ready");
@@ -260,7 +282,7 @@ export const NetworkAssetSearchScreen: React.FC<{
       });
   }, [services, keyword, setStatus]);
 
-  useInput((input, key) => {
+  useInput((_input, key) => {
     if (!inputEnabled || keyword.length === 0) return;
     if (key.escape) {
       nav.pop();
