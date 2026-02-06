@@ -1,7 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { THEME } from "../theme.js";
-import { getMenuItemMargin } from "./menuListUtils.js";
 
 export type MenuItem = {
   label: string;
@@ -16,7 +15,6 @@ type MenuListProps = {
   selectedIndex: number;
   emptyMessage?: string;
   maxItems?: number;
-  itemGap?: number;
 };
 
 export const MenuList: React.FC<MenuListProps> = ({
@@ -25,7 +23,6 @@ export const MenuList: React.FC<MenuListProps> = ({
   selectedIndex,
   emptyMessage = "No items",
   maxItems,
-  itemGap,
 }) => {
   const windowedItems = React.useMemo(() => {
     if (!maxItems || items.length <= maxItems) {
@@ -63,17 +60,12 @@ export const MenuList: React.FC<MenuListProps> = ({
         windowedItems.items.map((item, index) => {
           const actualIndex = windowedItems.start + index;
           const isSelected = actualIndex === selectedIndex;
-          const marginBottom = getMenuItemMargin({
-            index,
-            total: windowedItems.items.length,
-            itemGap,
-          });
 
           return (
             <Box
               key={`${item.value}-${actualIndex}`}
               flexDirection="column"
-              marginBottom={marginBottom}
+              marginBottom={0}
               paddingX={1}
               paddingY={isSelected ? 0 : undefined}
             >
