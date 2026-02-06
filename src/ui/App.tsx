@@ -319,6 +319,7 @@ export const App: React.FC = () => {
             services={services}
             nav={nav}
             setStatus={setStatusMessage}
+            title={currentRoute.title}
             filters={currentRoute.filters}
             refreshToken={currentRoute.refreshToken}
             inputEnabled={inputEnabled}

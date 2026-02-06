@@ -12,7 +12,12 @@ export type Route =
   | { id: "onboarding" }
   | { id: "wallet-menu" }
   | { id: "wallet-assets" }
-  | { id: "wallet-snapshots"; filters?: SnapshotFilters; refreshToken?: number }
+  | {
+    id: "wallet-snapshots";
+    filters?: SnapshotFilters;
+    refreshToken?: number;
+    title?: string;
+  }
   | { id: "wallet-snapshot-filter"; filters?: SnapshotFilters }
   | { id: "transfer-to-user"; assetId?: string }
   | { id: "transfer-refund" }

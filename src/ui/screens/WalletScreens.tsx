@@ -9,6 +9,9 @@ import { THEME } from "../theme.js";
 import type { MixinServices } from "../../mixin/services/index.js";
 import type { Nav, SnapshotFilters, StatusState } from "../types.js";
 import { buildTxSummary } from "../utils/transactions.js";
+import { filterPositiveBalances } from "../utils/walletBalances.js";
+import { buildWalletSnapshotsRouteForAsset } from "../utils/walletNavigation.js";
+import { buildSnapshotMenuLabel } from "../utils/walletSnapshots.js";
 
 const SNAPSHOT_CACHE_TTL = 10000;
 const snapshotCache = new Map<string, { items: MenuItem[]; timestamp: number }>();
@@ -30,9 +33,10 @@ export const WalletAssetsScreen: React.FC<{
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const visibleBalances = useMemo(() => filterPositiveBalances(balances), [balances]);
 
   useEffect(() => {
-    setCommandHints("▲ / ▼ -> Select, ENTER -> Detail, T -> Transfer, ESC -> Exit");
+    setCommandHints("▲ / ▼ -> Select, ENTER -> Snapshots, T -> Transfer, ESC -> Exit");
   }, [setCommandHints]);
 
   const cancelBalanceFetch = () => {
@@ -67,7 +71,7 @@ export const WalletAssetsScreen: React.FC<{
   }, [services, setStatus]);
 
   useEffect(() => {
-    balances.forEach((row) => {
+    visibleBalances.forEach((row) => {
       if (
         row.iconUrl &&
         !iconMap[row.assetId] &&
@@ -88,16 +92,16 @@ export const WalletAssetsScreen: React.FC<{
         });
       }
     });
-  }, [balances, iconMap]);
+  }, [visibleBalances, iconMap]);
 
   const items = useMemo<MenuItem[]>(() => {
-    return balances.map((row) => ({
+    return visibleBalances.map((row) => ({
       label: `${row.symbol ?? row.assetId}  ${new BigNumber(row.balance).toFixed()}`,
       value: row.assetId,
       description: "",
       icon: iconMap[row.assetId] || (row.symbol ? `[${row.symbol}]` : "[--]"),
     }));
-  }, [balances, iconMap]);
+  }, [visibleBalances, iconMap]);
 
   useInput((input, key) => {
     if (!inputEnabled) return;
@@ -120,17 +124,15 @@ export const WalletAssetsScreen: React.FC<{
       nav.push({ id: "transfer-to-user", assetId: items[selectedIndex].value });
       return;
     }
-    if (key.return && items[selectedIndex] && services) {
-      setStatus("loading", "Loading asset detail...");
-      services.wallet
-        .assetDetail(items[selectedIndex].value)
-        .then((asset) => {
-          nav.push({ id: "result", title: "Asset Detail", data: asset });
-          setStatus("idle", "Ready");
+    if (key.return && visibleBalances[selectedIndex]) {
+      const selectedBalance = visibleBalances[selectedIndex];
+      nav.push(
+        buildWalletSnapshotsRouteForAsset({
+          assetId: selectedBalance.assetId,
+          symbol: selectedBalance.symbol ?? selectedBalance.assetId,
+          balance: selectedBalance.balance,
         })
-        .catch((error) => {
-          setStatus("error", error instanceof Error ? error.message : String(error));
-        });
+      );
     }
   });
 
@@ -249,6 +251,7 @@ export const WalletSnapshotsScreen: React.FC<{
   services: MixinServices | null;
   nav: Nav;
   setStatus: (state: StatusState, message: string) => void;
+  title?: string;
   filters?: SnapshotFilters;
   refreshToken?: number;
   inputEnabled: boolean;
@@ -258,6 +261,7 @@ export const WalletSnapshotsScreen: React.FC<{
   services,
   nav,
   setStatus,
+  title,
   filters,
   refreshToken,
   inputEnabled,
@@ -274,14 +278,6 @@ export const WalletSnapshotsScreen: React.FC<{
       "▲ / ▼ -> Select, ENTER -> Detail, F -> Filter, R -> Refresh, ESC -> Exit"
     );
   }, [setCommandHints]);
-
-  const formatTimestamp = (value: string) => {
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-      return value;
-    }
-    return parsed.toISOString().replace("T", " ").slice(0, 19);
-  };
 
   const request = useMemo<SafeSnapshotsRequest>(() => {
     const limit = Number.parseInt(filters?.limit ?? "20", 10);
@@ -318,9 +314,15 @@ export const WalletSnapshotsScreen: React.FC<{
             typeLabel = "transfer";
           }
           return {
-            label: `${new BigNumber(snapshot.amount).toFixed()} ${snapshot.asset_symbol ?? snapshot.asset_id}`,
+            label: buildSnapshotMenuLabel({
+              amount: snapshot.amount,
+              assetSymbol: snapshot.asset_symbol,
+              assetId: snapshot.asset_id,
+              createdAt: snapshot.created_at,
+              typeLabel,
+              snapshotId: snapshot.snapshot_id,
+            }),
             value: snapshot.snapshot_id,
-            description: `${formatTimestamp(snapshot.created_at)}  ${typeLabel}  snapshot_id: ${snapshot.snapshot_id}`,
           };
         });
         setItems(mapped);
@@ -404,7 +406,7 @@ export const WalletSnapshotsScreen: React.FC<{
 
   return (
     <MenuList
-      title="Snapshots"
+      title={title ?? "Snapshots"}
       items={items}
       selectedIndex={selectedIndex}
       emptyMessage="No snapshots"
